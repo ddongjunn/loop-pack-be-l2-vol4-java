@@ -1,0 +1,47 @@
+### 회원가입 - 정상
+POST {{commerce-api}}/api/v1/users
+Content-Type: application/json
+
+{
+  "loginId": "loopers01",
+  "password": "Passw0rd!",
+  "name": "김루퍼",
+  "birthDate": "1995-03-21",
+  "email": "looper@example.com"
+}
+
+### 회원가입 - 검증 실패 (로그인 ID 형식 위반: 대문자/길이)
+POST {{commerce-api}}/api/v1/users
+Content-Type: application/json
+
+{
+  "loginId": "AB",
+  "password": "Passw0rd!",
+  "name": "김루퍼",
+  "birthDate": "1995-03-21",
+  "email": "looper@example.com"
+}
+
+### 회원가입 - 검증 실패 (비밀번호에 생년월일 포함)
+POST {{commerce-api}}/api/v1/users
+Content-Type: application/json
+
+{
+  "loginId": "loopers02",
+  "password": "19950321aA",
+  "name": "김루퍼",
+  "birthDate": "1995-03-21",
+  "email": "looper@example.com"
+}
+
+### 회원가입 - 중복 로그인 ID (위 "정상" 요청을 먼저 보낸 뒤 실행)
+POST {{commerce-api}}/api/v1/users
+Content-Type: application/json
+
+{
+  "loginId": "loopers01",
+  "password": "Passw0rd!",
+  "name": "김루퍼",
+  "birthDate": "1995-03-21",
+  "email": "looper@example.com"
+}
