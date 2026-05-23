@@ -20,7 +20,7 @@ Loopers 커머스 백엔드 — 멀티 모듈 Spring Boot 프로젝트(Loopers J
 
 ## 모듈 구조
 
-```
+```text
 apps/        실행 가능한 @SpringBootApplication 모듈 — bootJar는 여기서만 생성
   commerce-api       REST API (web + actuator + swagger)
   commerce-batch     Spring Batch 잡
