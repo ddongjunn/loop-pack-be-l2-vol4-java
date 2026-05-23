@@ -72,18 +72,22 @@ docker-compose -f ./docker/monitoring-compose.yml up   # Prometheus + Grafana (h
 
 ## 아키텍처 (commerce-api)
 
-도메인당 하나의 패키지(`com.loopers.<layer>.<domain>`)를 갖는 클린/레이어드 아키텍처. 의존성은 안쪽을 향한다: `interfaces → application → domain ← infrastructure`.
+도메인당 하나의 패키지(`com.loopers.<layer>.<domain>`)를 갖는 Clean Architecture 스타일 레이어링. 의존성은 안쪽을 향한다: `interfaces → application → domain ← infrastructure`.
 
-| 계층 | 패키지 | 역할 |
-|------|--------|------|
-| Interface | `interfaces/api/<domain>` | `XxxV1Controller`(REST), `XxxV1Dto`(요청/응답 record), `XxxV1ApiSpec`(Swagger 문서용 인터페이스 — 컨트롤러가 `implements`) |
-| Application | `application/<domain>` | `XxxFacade`(`@Component`, 유스케이스 조합), `XxxInfo`(출력 DTO, `from(model)`) |
-| Domain | `domain/<domain>` | `XxxModel`(`@Entity`, 생성자/메서드에서 자신의 불변식 검증), `XxxService`(`@Component`, `@Transactional` 비즈니스 로직), `XxxRepository`(포트 인터페이스) |
-| Infrastructure | `infrastructure/<domain>` | `XxxRepositoryImpl`(`@Component`, 포트 구현), `XxxJpaRepository`(Spring Data 인터페이스) |
+| 계층 | 패키지 | 역할 | I/O |
+|------|--------|------|-----|
+| Interface | `interfaces/api/<domain>` | `XxxV1Controller`(REST), `XxxV1Dto`(요청/응답 record), `XxxV1ApiSpec`(Swagger 인터페이스 — 컨트롤러가 `implements`) | — |
+| Application | `application/<domain>` | `XxxService`(유스케이스 오케스트레이션, `@Transactional`), `XxxValidator`(검증), `XxxReader`(조회), `XxxCommand`(유스케이스 입력 record), `XxxFacade`(다중 도메인 조합 시) | **Repository·외부 I/O는 모두 여기** |
+| Domain | `domain/<domain>` | `XxxModel`(`@Entity`), 정적 정책·규칙 클래스(예: `XxxPasswordPolicy`), `XxxRepository`(port 인터페이스) | **순수 인메모리만, I/O 없음** |
+| Infrastructure | `infrastructure/<domain>` | `XxxRepositoryImpl`(port 구현), `XxxJpaRepository`(Spring Data 인터페이스) | — |
 
-호출 흐름: Controller가 `V1Dto` → Facade 인자로 매핑 → Service가 도메인 `Model`을 반환 → Facade가 `Info`로 래핑 → Controller가 `ApiResponse`로 래핑. Repository **포트**는 `domain`에, JPA **어댑터**는 `infrastructure`에 있다 — 도메인 코드는 Spring Data를 import하지 않는다. JPA 리포지토리 스캔 범위는 `com.loopers.infrastructure`로 한정돼 있다(`JpaConfig`).
+**도메인/애플리케이션 분기 기준**: Repository나 외부 시스템을 호출하면 application, 순수 인메모리 로직(엔티티 불변식·정적 규칙)만 있으면 domain.
 
-도메인을 새로 추가할 때는 이 파일 세트를 그대로 복제하고 기존 네이밍을 정확히 따른다. `XxxV1ApiSpec`은 `example` 도메인이 따르는 레퍼런스 패턴이며, `product`에는 아직 적용돼 있지 않다 — 새 도메인에는 적용을 권장한다.
+호출 흐름: Controller가 `V1Dto` → application `Command`로 변환 → application `Service`가 도메인 객체와 Repository를 조율 → 결과를 `V1Dto.Response`로 매핑해 `ApiResponse`로 반환. 다중 도메인을 엮어야 할 때만 Facade를 application에 추가한다(단일 도메인 유스케이스면 Facade 불필요).
+
+Repository **port**는 `domain`에 인터페이스로만 선언하고, JPA **어댑터**는 `infrastructure`에 둔다 — 도메인은 Spring Data를 import하지 않는다. JPA 리포지토리 스캔 범위는 `com.loopers.infrastructure`로 한정돼 있다(`JpaConfig`).
+
+> **예외**: `commerce-api`의 `example`, `product` 도메인은 프로젝트 템플릿이 제공한 레퍼런스 코드라서 Spring 레이어드 컨벤션(`XxxService`가 `domain/`에 위치)을 따른다. **신규 도메인(예: `user`)부터는 위 표의 Clean Architecture 기준**을 따른다. `XxxV1ApiSpec`(Swagger 인터페이스)은 신규 도메인에 적용을 권장한다.
 
 ### 공통 규약
 

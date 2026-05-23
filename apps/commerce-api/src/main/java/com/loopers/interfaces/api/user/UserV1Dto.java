@@ -1,6 +1,6 @@
 package com.loopers.interfaces.api.user;
 
-import com.loopers.domain.user.UserCommand;
+import com.loopers.application.user.UserCommand;
 import com.loopers.domain.user.User;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
@@ -93,6 +93,10 @@ public class UserV1Dto {
                 return true;
             }
             return !newPassword.equals(currentPassword);
+        }
+
+        public UserCommand.ChangePassword toCommand(Long userId) {
+            return new UserCommand.ChangePassword(userId, currentPassword, newPassword);
         }
     }
 }

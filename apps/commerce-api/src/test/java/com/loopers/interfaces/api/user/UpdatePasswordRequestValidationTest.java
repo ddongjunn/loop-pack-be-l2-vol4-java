@@ -1,5 +1,6 @@
 package com.loopers.interfaces.api.user;
 
+import com.loopers.application.user.UserCommand;
 import com.loopers.interfaces.api.user.UserV1Dto.UpdatePasswordRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -72,5 +73,17 @@ class UpdatePasswordRequestValidationTest {
         UpdatePasswordRequest request = new UpdatePasswordRequest("Same1234!", "Same1234!");
 
         assertThat(validator.validate(request)).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("요청 값을 비밀번호 수정 커맨드로 변환한다")
+    void toCommand_returnsChangePasswordCommand() {
+        UpdatePasswordRequest request = validRequest();
+
+        UserCommand.ChangePassword command = request.toCommand(1L);
+
+        assertThat(command.userId()).isEqualTo(1L);
+        assertThat(command.currentPassword()).isEqualTo("Curr3nt!");
+        assertThat(command.newPassword()).isEqualTo("NewPass1!");
     }
 }

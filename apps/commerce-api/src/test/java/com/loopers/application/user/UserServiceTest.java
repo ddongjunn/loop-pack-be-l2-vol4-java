@@ -1,5 +1,7 @@
-package com.loopers.domain.user;
+package com.loopers.application.user;
 
+import com.loopers.domain.user.User;
+import com.loopers.domain.user.UserRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.junit.jupiter.api.DisplayName;
@@ -14,7 +16,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,11 +25,10 @@ class UserServiceTest {
 
     private static final String RAW_PASSWORD = "Passw0rd!";
 
-    private final UserValidator userValidator = mock(UserValidator.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final UserReader userReader = mock(UserReader.class);
-    private final UserService userService = new UserService(userValidator, userRepository, passwordEncoder, userReader);
+    private final UserService userService = new UserService(userRepository, passwordEncoder, userReader);
 
     private UserCommand.SignUp signUpCommand() {
         return new UserCommand.SignUp(
@@ -67,13 +67,27 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("검증에 실패하면 사용자를 저장하지 않는다")
-    void signUp_whenValidationFails_doesNotSave() {
-        doThrow(new CoreException(ErrorType.CONFLICT, "이미 사용 중인 로그인 ID입니다."))
-            .when(userValidator).validateSignUp(any());
+    @DisplayName("이미 존재하는 로그인 ID로 회원가입하면 CONFLICT 예외가 발생하고 저장하지 않는다")
+    void signUp_whenLoginIdAlreadyExists_throwsConflictAndDoesNotSave() {
+        when(userRepository.existsByLoginId("loopers01")).thenReturn(true);
 
         assertThatThrownBy(() -> userService.signUp(signUpCommand()))
-            .isInstanceOf(CoreException.class);
+            .isInstanceOf(CoreException.class)
+            .hasFieldOrPropertyWithValue("errorType", ErrorType.CONFLICT);
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("생년월일이 포함된 비밀번호로 회원가입하면 BAD_REQUEST 예외가 발생하고 저장하지 않는다")
+    void signUp_whenPasswordContainsBirthDate_throwsBadRequestAndDoesNotSave() {
+        UserCommand.SignUp command = new UserCommand.SignUp(
+            "loopers01", "19950321aA", "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
+        );
+
+        assertThatThrownBy(() -> userService.signUp(command))
+            .isInstanceOf(CoreException.class)
+            .hasFieldOrPropertyWithValue("errorType", ErrorType.BAD_REQUEST);
 
         verify(userRepository, never()).save(any());
     }
@@ -121,8 +135,9 @@ class UserServiceTest {
         User user = existingUser();
         when(userReader.get(1L)).thenReturn(user);
         String newRawPassword = "NewPass1!";
+        UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, newRawPassword);
 
-        userService.changePassword(1L, RAW_PASSWORD, newRawPassword);
+        userService.changePassword(command);
 
         assertThat(user.getPassword()).isNotEqualTo(newRawPassword);
         assertThat(passwordEncoder.matches(newRawPassword, user.getPassword())).isTrue();
@@ -132,9 +147,34 @@ class UserServiceTest {
     @DisplayName("비밀번호 수정 시 사용자가 존재하지 않으면 NOT_FOUND 예외가 발생한다")
     void changePassword_whenUserNotFound_throwsNotFound() {
         when(userReader.get(999L)).thenThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        UserCommand.ChangePassword command = new UserCommand.ChangePassword(999L, RAW_PASSWORD, "NewPass1!");
 
-        assertThatThrownBy(() -> userService.changePassword(999L, RAW_PASSWORD, "NewPass1!"))
+        assertThatThrownBy(() -> userService.changePassword(command))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("비밀번호 수정 시 현재 비밀번호가 일치하지 않으면 BAD_REQUEST 예외가 발생한다")
+    void changePassword_whenCurrentPasswordMismatches_throwsBadRequest() {
+        User user = existingUser();
+        when(userReader.get(1L)).thenReturn(user);
+        UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, "WrongPass1!", "NewPass1!");
+
+        assertThatThrownBy(() -> userService.changePassword(command))
+            .isInstanceOf(CoreException.class)
+            .hasFieldOrPropertyWithValue("errorType", ErrorType.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("비밀번호 수정 시 새 비밀번호에 생년월일이 포함되면 BAD_REQUEST 예외가 발생한다")
+    void changePassword_whenNewPasswordContainsBirthDate_throwsBadRequest() {
+        User user = existingUser();
+        when(userReader.get(1L)).thenReturn(user);
+        UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, "19950321aA");
+
+        assertThatThrownBy(() -> userService.changePassword(command))
+            .isInstanceOf(CoreException.class)
+            .hasFieldOrPropertyWithValue("errorType", ErrorType.BAD_REQUEST);
     }
 }

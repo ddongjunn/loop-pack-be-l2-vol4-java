@@ -1,7 +1,7 @@
 package com.loopers.interfaces.api.user;
 
+import com.loopers.application.user.UserService;
 import com.loopers.domain.user.User;
-import com.loopers.domain.user.UserService;
 import com.loopers.interfaces.api.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +42,7 @@ public class UserV1Controller implements UserV1ApiSpec {
         @AuthenticationPrincipal Long userId,
         @Valid @RequestBody UserV1Dto.UpdatePasswordRequest request
     ) {
-        userService.changePassword(userId, request.currentPassword(), request.newPassword());
+        userService.changePassword(request.toCommand(userId));
         return ApiResponse.success(null);
     }
 }
