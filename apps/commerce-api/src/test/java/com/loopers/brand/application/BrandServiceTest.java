@@ -2,6 +2,8 @@ package com.loopers.brand.application;
 
 import com.loopers.brand.domain.Brand;
 import com.loopers.brand.domain.BrandRepository;
+import com.loopers.product.domain.ProductRepository;
+import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +24,10 @@ class BrandServiceTest {
 
     private final BrandRepository brandRepository = mock(BrandRepository.class);
     private final BrandReader brandReader = mock(BrandReader.class);
-    private final BrandService brandService = new BrandService(brandRepository, brandReader);
+    private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final ProductStockRepository productStockRepository = mock(ProductStockRepository.class);
+    private final BrandService brandService =
+            new BrandService(brandRepository, brandReader, productRepository, productStockRepository);
 
     @Test
     @DisplayName("create 커맨드로 브랜드를 저장한다")
@@ -68,24 +73,29 @@ class BrandServiceTest {
     }
 
     @Test
-    @DisplayName("delete 호출 시 브랜드의 deletedAt 이 채워진다")
-    void givenExistingBrandId_whenDelete_thenMarksBrandAsDeleted() {
-        Brand brand = Brand.create("루퍼스", "설명");
-        when(brandReader.get(1L)).thenReturn(brand);
+    @DisplayName("delete 호출 시 stock, product, brand 순으로 bulk soft delete 가 수행된다")
+    void givenExistingBrandId_whenDelete_thenBulkSoftDeletesStockProductBrand() {
+        when(brandReader.get(1L)).thenReturn(Brand.create("루퍼스", "설명"));
 
         brandService.delete(1L);
 
-        assertThat(brand.getDeletedAt()).isNotNull();
+        verify(productStockRepository).softDeleteByBrandId(1L);
+        verify(productRepository).softDeleteByBrandId(1L);
+        verify(brandRepository).softDeleteById(1L);
     }
 
     @Test
-    @DisplayName("delete 시 존재하지 않는 brandId 이면 reader 가 던진 NOT_FOUND 예외가 전파된다")
-    void givenNonExistingId_whenDelete_thenPropagatesNotFound() {
+    @DisplayName("delete 시 존재하지 않는 brandId 이면 reader 가 던진 NOT_FOUND 가 전파되고 cascade 는 일어나지 않는다")
+    void givenNonExistingId_whenDelete_thenPropagatesNotFoundAndDoesNotCascade() {
         when(brandReader.get(999L)).thenThrow(new CoreException(ErrorType.NOT_FOUND, "브랜드를 찾을 수 없습니다."));
 
         assertThatThrownBy(() -> brandService.delete(999L))
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorType", ErrorType.NOT_FOUND);
+
+        verify(productStockRepository, org.mockito.Mockito.never()).softDeleteByBrandId(any());
+        verify(productRepository, org.mockito.Mockito.never()).softDeleteByBrandId(any());
+        verify(brandRepository, org.mockito.Mockito.never()).softDeleteById(any());
     }
 
     @Test

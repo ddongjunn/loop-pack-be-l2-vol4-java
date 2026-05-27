@@ -28,4 +28,14 @@ public class BrandRepositoryImpl implements BrandRepository {
     public List<Brand> findAll() {
         return brandJpaRepository.findAllByDeletedAtIsNull();
     }
+
+    @Override
+    public boolean existsById(Long id) {
+        return brandJpaRepository.existsByIdAndDeletedAtIsNull(id);
+    }
+
+    @Override
+    public int softDeleteById(Long id) {
+        return brandJpaRepository.softDeleteById(id);
+    }
 }

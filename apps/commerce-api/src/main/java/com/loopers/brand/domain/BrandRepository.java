@@ -7,4 +7,6 @@ public interface BrandRepository {
     Brand save(Brand brand);
     Optional<Brand> findById(Long id);
     List<Brand> findAll();
+    boolean existsById(Long id);
+    int softDeleteById(Long id);
 }

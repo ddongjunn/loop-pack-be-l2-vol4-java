@@ -2,6 +2,8 @@ package com.loopers.brand.application;
 
 import com.loopers.brand.domain.Brand;
 import com.loopers.brand.domain.BrandRepository;
+import com.loopers.product.domain.ProductRepository;
+import com.loopers.product.domain.ProductStockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,8 @@ public class BrandService {
 
     private final BrandRepository brandRepository;
     private final BrandReader brandReader;
+    private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
 
     @Transactional
     public Brand create(BrandCommand.Create command) {
@@ -30,8 +34,10 @@ public class BrandService {
 
     @Transactional
     public void delete(Long brandId) {
-        Brand brand = brandReader.get(brandId);
-        brand.delete();
+        brandReader.get(brandId);
+        productStockRepository.softDeleteByBrandId(brandId);
+        productRepository.softDeleteByBrandId(brandId);
+        brandRepository.softDeleteById(brandId);
     }
 
     @Transactional(readOnly = true)
