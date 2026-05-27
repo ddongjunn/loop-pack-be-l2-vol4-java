@@ -58,7 +58,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("유효한 정보로 회원가입하면, 200과 가입된 유저 정보를 반환한다.")
         @Test
-        void returnsUserInfo_whenRequestIsValid() {
+        void givenValidRequest_whenSignUp_thenReturnsUserInfo() {
             ResponseEntity<ApiResponse<UserV1Dto.UserResponse>> response = signUp(validRequest());
 
             assertAll(
@@ -73,7 +73,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("회원가입 응답의 data 에는 password 필드 자체가 존재하지 않는다.")
         @Test
-        void responseHasNoPasswordField() {
+        void givenSignUpResponse_whenInspect_thenHasNoPasswordField() {
             ResponseEntity<JsonNode> response = testRestTemplate.postForEntity(ENDPOINT, validRequest(), JsonNode.class);
 
             JsonNode data = response.getBody().get("data");
@@ -82,7 +82,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("이미 사용 중인 로그인 ID로 가입하면, 409 CONFLICT 응답을 받는다.")
         @Test
-        void throwsConflict_whenLoginIdIsDuplicated() {
+        void givenDuplicateLoginId_whenSignUp_thenThrowsConflict() {
             signUp(validRequest());
 
             ResponseEntity<ApiResponse<UserV1Dto.UserResponse>> response = signUp(validRequest());
@@ -92,7 +92,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("형식에 맞지 않는 정보로 가입하면, 400 BAD_REQUEST 응답을 받는다.")
         @Test
-        void throwsBadRequest_whenRequestIsInvalid() {
+        void givenInvalidRequest_whenSignUp_thenThrowsBadRequest() {
             UserV1Dto.SignUpRequest invalidRequest = new UserV1Dto.SignUpRequest(
                 "AB", "Passw0rd!", "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
             );
@@ -121,7 +121,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("올바른 인증 헤더로 요청하면, 200과 내 정보를 반환한다. (이름은 마스킹)")
         @Test
-        void returnsMyInfo_whenHeadersAreValid() {
+        void givenValidHeaders_whenGetMyInfo_thenReturnsMyInfo() {
             signUp(validRequest());
 
             ResponseEntity<ApiResponse<UserV1Dto.UserInfoResponse>> response =
@@ -138,7 +138,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("비밀번호가 틀리면, 401 UNAUTHORIZED 응답을 받는다.")
         @Test
-        void throwsUnauthorized_whenPasswordIsWrong() {
+        void givenWrongPassword_whenGetMyInfo_thenThrowsUnauthorized() {
             signUp(validRequest());
 
             ResponseEntity<ApiResponse<UserV1Dto.UserInfoResponse>> response =
@@ -149,7 +149,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("인증 헤더가 없으면, 401 UNAUTHORIZED 응답을 받는다.")
         @Test
-        void throwsUnauthorized_whenHeadersAreMissing() {
+        void givenMissingHeaders_whenGetMyInfo_thenThrowsUnauthorized() {
             ResponseEntity<ApiResponse<UserV1Dto.UserInfoResponse>> response =
                 requestMyInfo(new HttpHeaders());
 
@@ -175,7 +175,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("올바른 헤더 + 유효한 요청이면, 200 으로 비밀번호가 변경된다.")
         @Test
-        void changesPassword_whenRequestIsValid() {
+        void givenValidRequest_whenChangePassword_thenChangesPassword() {
             signUp(validRequest());
 
             ResponseEntity<ApiResponse<Void>> response = requestChange(
@@ -188,7 +188,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("새 비밀번호 형식이 잘못되면, 400 BAD_REQUEST 응답을 받는다.")
         @Test
-        void throwsBadRequest_whenNewPasswordFormatIsInvalid() {
+        void givenInvalidNewPasswordFormat_whenChangePassword_thenThrowsBadRequest() {
             signUp(validRequest());
 
             ResponseEntity<ApiResponse<Void>> response = requestChange(
@@ -201,7 +201,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("현재 비밀번호가 일치하지 않으면, 400 BAD_REQUEST 응답을 받는다.")
         @Test
-        void throwsBadRequest_whenCurrentPasswordMismatches() {
+        void givenMismatchingCurrentPassword_whenChangePassword_thenThrowsBadRequest() {
             signUp(validRequest());
 
             ResponseEntity<ApiResponse<Void>> response = requestChange(
@@ -214,7 +214,7 @@ class UserV1ApiE2ETest {
 
         @DisplayName("인증 헤더가 없으면, 401 UNAUTHORIZED 응답을 받는다.")
         @Test
-        void throwsUnauthorized_whenHeadersAreMissing() {
+        void givenMissingHeaders_whenChangePassword_thenThrowsUnauthorized() {
             ResponseEntity<ApiResponse<Void>> response = requestChange(
                 new HttpHeaders(),
                 new UserV1Dto.UpdatePasswordRequest("Passw0rd!", "NewPass1!")

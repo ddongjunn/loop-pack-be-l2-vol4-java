@@ -28,7 +28,7 @@ class UserReaderTest {
 
     @Test
     @DisplayName("userId로 조회하면 해당 사용자를 반환한다")
-    void get_returnsUser() {
+    void givenExistingUserId_whenGet_thenReturnsUser() {
         User user = existingUser();
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
@@ -39,7 +39,7 @@ class UserReaderTest {
 
     @Test
     @DisplayName("사용자가 존재하지 않으면 NOT_FOUND 예외가 발생한다")
-    void get_whenUserNotFound_throwsNotFound() {
+    void givenNonExistingUserId_whenGet_thenThrowsNotFound() {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userReader.get(999L))

@@ -46,13 +46,13 @@ class SignUpRequestValidationTest {
 
     @Test
     @DisplayName("모든 필드가 유효하면 위반이 없다")
-    void validRequest_hasNoViolations() {
+    void givenValidRequest_whenValidate_thenHasNoViolations() {
         assertThat(validator.validate(validRequest())).isEmpty();
     }
 
     @Test
     @DisplayName("로그인 ID가 형식에 맞지 않으면 loginId 위반이 발생한다")
-    void invalidLoginId_hasViolation() {
+    void givenInvalidLoginId_whenValidate_thenHasLoginIdViolation() {
         SignUpRequest request = new SignUpRequest(
             "AB", "Passw0rd!", "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
         );
@@ -61,7 +61,7 @@ class SignUpRequestValidationTest {
 
     @Test
     @DisplayName("비밀번호가 형식에 맞지 않으면 password 위반이 발생한다")
-    void invalidPassword_hasViolation() {
+    void givenInvalidPassword_whenValidate_thenHasPasswordViolation() {
         SignUpRequest request = new SignUpRequest(
             "loopers01", "short", "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
         );
@@ -70,7 +70,7 @@ class SignUpRequestValidationTest {
 
     @Test
     @DisplayName("이름이 형식에 맞지 않으면 name 위반이 발생한다")
-    void invalidName_hasViolation() {
+    void givenInvalidName_whenValidate_thenHasNameViolation() {
         SignUpRequest request = new SignUpRequest(
             "loopers01", "Passw0rd!", "looper01", LocalDate.of(1995, 3, 21), "looper@example.com"
         );
@@ -79,7 +79,7 @@ class SignUpRequestValidationTest {
 
     @Test
     @DisplayName("이메일 형식이 아니면 email 위반이 발생한다")
-    void invalidEmail_hasViolation() {
+    void givenInvalidEmail_whenValidate_thenHasEmailViolation() {
         SignUpRequest request = new SignUpRequest(
             "loopers01", "Passw0rd!", "김루퍼", LocalDate.of(1995, 3, 21), "invalid-email"
         );
@@ -88,7 +88,7 @@ class SignUpRequestValidationTest {
 
     @Test
     @DisplayName("생년월일이 미래이면 birthDate 위반이 발생한다")
-    void futureBirthDate_hasViolation() {
+    void givenFutureBirthDate_whenValidate_thenHasBirthDateViolation() {
         SignUpRequest request = new SignUpRequest(
             "loopers01", "Passw0rd!", "김루퍼", LocalDate.now().plusDays(1), "looper@example.com"
         );
@@ -97,7 +97,7 @@ class SignUpRequestValidationTest {
 
     @Test
     @DisplayName("필수 필드가 null이면 각 필드에 위반이 발생한다")
-    void nullFields_haveViolationForEachField() {
+    void givenNullFields_whenValidate_thenHasViolationForEachField() {
         SignUpRequest request = new SignUpRequest(null, null, null, null, null);
         assertThat(hasViolationOn(request, "loginId")).isTrue();
         assertThat(hasViolationOn(request, "password")).isTrue();

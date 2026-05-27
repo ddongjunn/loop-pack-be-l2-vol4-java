@@ -23,7 +23,7 @@ class UserTest {
 
     @Test
     @DisplayName("create 로 생성하면 모든 필드가 저장된다")
-    void create_storesAllFields() {
+    void givenValidFields_whenCreate_thenStoresAllFields() {
         User user = User.create(LOGIN_ID, PASSWORD, NAME, BIRTH_DATE, EMAIL);
 
         assertAll(
@@ -39,7 +39,7 @@ class UserTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "   "})
     @DisplayName("로그인 ID가 비어있으면 CoreException이 발생한다")
-    void blankLoginId_throws(String invalidLoginId) {
+    void givenBlankLoginId_whenCreate_thenThrowsCoreException(String invalidLoginId) {
         assertThatThrownBy(() -> User.create(invalidLoginId, PASSWORD, NAME, BIRTH_DATE, EMAIL))
             .isInstanceOf(CoreException.class)
             .hasMessageContaining("로그인 ID는 비어있을 수 없습니다.");
@@ -49,7 +49,7 @@ class UserTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "   "})
     @DisplayName("비밀번호가 비어있으면 CoreException이 발생한다")
-    void blankPassword_throws(String invalidPassword) {
+    void givenBlankPassword_whenCreate_thenThrowsCoreException(String invalidPassword) {
         assertThatThrownBy(() -> User.create(LOGIN_ID, invalidPassword, NAME, BIRTH_DATE, EMAIL))
             .isInstanceOf(CoreException.class)
             .hasMessageContaining("비밀번호는 비어있을 수 없습니다.");
@@ -59,7 +59,7 @@ class UserTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "   "})
     @DisplayName("이름이 비어있으면 CoreException이 발생한다")
-    void blankName_throws(String invalidName) {
+    void givenBlankName_whenCreate_thenThrowsCoreException(String invalidName) {
         assertThatThrownBy(() -> User.create(LOGIN_ID, PASSWORD, invalidName, BIRTH_DATE, EMAIL))
             .isInstanceOf(CoreException.class)
             .hasMessageContaining("이름은 비어있을 수 없습니다.");
@@ -69,7 +69,7 @@ class UserTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "   "})
     @DisplayName("이메일이 비어있으면 CoreException이 발생한다")
-    void blankEmail_throws(String invalidEmail) {
+    void givenBlankEmail_whenCreate_thenThrowsCoreException(String invalidEmail) {
         assertThatThrownBy(() -> User.create(LOGIN_ID, PASSWORD, NAME, BIRTH_DATE, invalidEmail))
             .isInstanceOf(CoreException.class)
             .hasMessageContaining("이메일은 비어있을 수 없습니다.");
@@ -77,7 +77,7 @@ class UserTest {
 
     @Test
     @DisplayName("생년월일이 없으면 CoreException이 발생한다")
-    void nullBirthDate_throws() {
+    void givenNullBirthDate_whenCreate_thenThrowsCoreException() {
         assertThatThrownBy(() -> User.create(LOGIN_ID, PASSWORD, NAME, null, EMAIL))
             .isInstanceOf(CoreException.class)
             .hasMessageContaining("생년월일은 비어있을 수 없습니다.");
@@ -85,7 +85,7 @@ class UserTest {
 
     @Test
     @DisplayName("changePassword 로 비밀번호를 갱신할 수 있다")
-    void changePassword_updatesPassword() {
+    void givenUser_whenChangePassword_thenUpdatesPassword() {
         User user = User.create(LOGIN_ID, PASSWORD, NAME, BIRTH_DATE, EMAIL);
 
         user.changePassword("new-encoded-password");
@@ -97,7 +97,7 @@ class UserTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "   "})
     @DisplayName("changePassword 에 비어있는 값을 주면 CoreException 이 발생한다")
-    void changePassword_withBlank_throws(String invalidPassword) {
+    void givenUser_whenChangePasswordWithBlank_thenThrowsCoreException(String invalidPassword) {
         User user = User.create(LOGIN_ID, PASSWORD, NAME, BIRTH_DATE, EMAIL);
 
         assertThatThrownBy(() -> user.changePassword(invalidPassword))

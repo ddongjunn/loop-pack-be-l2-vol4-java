@@ -48,7 +48,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("회원가입하면 비밀번호가 암호화되어 저장된다")
-    void signUp_encodesPassword() {
+    void givenSignUpCommand_whenSignUp_thenEncodesPassword() {
         User saved = savedUser();
 
         assertThat(saved.getPassword()).isNotEqualTo(RAW_PASSWORD);
@@ -57,7 +57,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("회원가입하면 커맨드의 정보로 사용자가 저장된다")
-    void signUp_savesUserWithCommandFields() {
+    void givenSignUpCommand_whenSignUp_thenSavesUserWithCommandFields() {
         User saved = savedUser();
 
         assertThat(saved.getLoginId()).isEqualTo("loopers01");
@@ -68,7 +68,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("이미 존재하는 로그인 ID로 회원가입하면 CONFLICT 예외가 발생하고 저장하지 않는다")
-    void signUp_whenLoginIdAlreadyExists_throwsConflictAndDoesNotSave() {
+    void givenDuplicateLoginId_whenSignUp_thenThrowsConflictAndDoesNotSave() {
         when(userRepository.existsByLoginId("loopers01")).thenReturn(true);
 
         assertThatThrownBy(() -> userService.signUp(signUpCommand()))
@@ -80,7 +80,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("생년월일이 포함된 비밀번호로 회원가입하면 BAD_REQUEST 예외가 발생하고 저장하지 않는다")
-    void signUp_whenPasswordContainsBirthDate_throwsBadRequestAndDoesNotSave() {
+    void givenPasswordContainingBirthDate_whenSignUp_thenThrowsBadRequestAndDoesNotSave() {
         UserCommand.SignUp command = new UserCommand.SignUp(
             "loopers01", "19950321aA", "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
         );
@@ -100,7 +100,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("올바른 자격으로 인증하면 userId를 반환한다")
-    void authenticate_withValidCredentials_returnsUserId() {
+    void givenValidCredentials_whenAuthenticate_thenReturnsUserId() {
         User user = existingUser();
         when(userRepository.findByLoginId("loopers01")).thenReturn(Optional.of(user));
 
@@ -111,7 +111,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("비밀번호가 일치하지 않으면 빈 값을 반환한다")
-    void authenticate_withWrongPassword_returnsEmpty() {
+    void givenWrongPassword_whenAuthenticate_thenReturnsEmpty() {
         when(userRepository.findByLoginId("loopers01")).thenReturn(Optional.of(existingUser()));
 
         Optional<Long> result = userService.authenticate("loopers01", "WrongPass1!");
@@ -121,7 +121,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("존재하지 않는 로그인 ID이면 빈 값을 반환한다")
-    void authenticate_withUnknownLoginId_returnsEmpty() {
+    void givenUnknownLoginId_whenAuthenticate_thenReturnsEmpty() {
         when(userRepository.findByLoginId("unknown01")).thenReturn(Optional.empty());
 
         Optional<Long> result = userService.authenticate("unknown01", RAW_PASSWORD);
@@ -131,7 +131,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("비밀번호 수정 시 새 비밀번호가 인코딩되어 갱신된다")
-    void changePassword_updatesPasswordToEncoded() {
+    void givenValidCommand_whenChangePassword_thenUpdatesPasswordToEncoded() {
         User user = existingUser();
         when(userReader.get(1L)).thenReturn(user);
         String newRawPassword = "NewPass1!";
@@ -145,7 +145,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("비밀번호 수정 시 사용자가 존재하지 않으면 NOT_FOUND 예외가 발생한다")
-    void changePassword_whenUserNotFound_throwsNotFound() {
+    void givenNonExistingUser_whenChangePassword_thenThrowsNotFound() {
         when(userReader.get(999L)).thenThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."));
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(999L, RAW_PASSWORD, "NewPass1!");
 
@@ -156,7 +156,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("비밀번호 수정 시 현재 비밀번호가 일치하지 않으면 BAD_REQUEST 예외가 발생한다")
-    void changePassword_whenCurrentPasswordMismatches_throwsBadRequest() {
+    void givenMismatchingCurrentPassword_whenChangePassword_thenThrowsBadRequest() {
         User user = existingUser();
         when(userReader.get(1L)).thenReturn(user);
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, "WrongPass1!", "NewPass1!");
@@ -168,7 +168,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("비밀번호 수정 시 새 비밀번호에 생년월일이 포함되면 BAD_REQUEST 예외가 발생한다")
-    void changePassword_whenNewPasswordContainsBirthDate_throwsBadRequest() {
+    void givenNewPasswordContainingBirthDate_whenChangePassword_thenThrowsBadRequest() {
         User user = existingUser();
         when(userReader.get(1L)).thenReturn(user);
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, "19950321aA");

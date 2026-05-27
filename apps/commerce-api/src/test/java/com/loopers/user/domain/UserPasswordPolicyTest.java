@@ -13,31 +13,31 @@ class UserPasswordPolicyTest {
 
     @Test
     @DisplayName("yyyyMMdd 형태의 생년월일이 비밀번호에 포함되면 true")
-    void containsYyyyMMdd_returnsTrue() {
+    void givenPasswordWithYyyyMMddBirthDate_whenContainsBirthDate_thenReturnsTrue() {
         assertThat(UserPasswordPolicy.containsBirthDate("19950321aA", BIRTH_DATE)).isTrue();
     }
 
     @Test
     @DisplayName("yyMMdd 형태의 생년월일이 비밀번호에 포함되면 true")
-    void containsYyMMdd_returnsTrue() {
+    void givenPasswordWithYyMMddBirthDate_whenContainsBirthDate_thenReturnsTrue() {
         assertThat(UserPasswordPolicy.containsBirthDate("950321aA!", BIRTH_DATE)).isTrue();
     }
 
     @Test
     @DisplayName("생년월일이 포함되지 않으면 false")
-    void doesNotContain_returnsFalse() {
+    void givenPasswordWithoutBirthDate_whenContainsBirthDate_thenReturnsFalse() {
         assertThat(UserPasswordPolicy.containsBirthDate("Passw0rd!", BIRTH_DATE)).isFalse();
     }
 
     @Test
     @DisplayName("password 가 null 이면 false (null 자체는 별도 검증의 책임)")
-    void nullPassword_returnsFalse() {
+    void givenNullPassword_whenContainsBirthDate_thenReturnsFalse() {
         assertThat(UserPasswordPolicy.containsBirthDate(null, BIRTH_DATE)).isFalse();
     }
 
     @Test
     @DisplayName("birthDate 가 null 이면 false")
-    void nullBirthDate_returnsFalse() {
+    void givenNullBirthDate_whenContainsBirthDate_thenReturnsFalse() {
         assertThat(UserPasswordPolicy.containsBirthDate("Passw0rd!", null)).isFalse();
     }
 }
