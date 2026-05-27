@@ -13,6 +13,7 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
     List<Product> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
     List<Product> findAllByDeletedAtIsNullOrderByPriceAsc();
+    List<Product> findAllByIdInAndDeletedAtIsNull(List<Long> ids);
 
     @Modifying(clearAutomatically = true)
     @Query("""

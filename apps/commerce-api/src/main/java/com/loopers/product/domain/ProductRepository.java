@@ -8,5 +8,6 @@ public interface ProductRepository {
     Optional<Product> findById(Long id);
     List<Product> findAllOrderByLatest();
     List<Product> findAllOrderByPriceAsc();
+    List<Product> findAllByIdIn(List<Long> ids);
     int softDeleteByBrandId(Long brandId);
 }

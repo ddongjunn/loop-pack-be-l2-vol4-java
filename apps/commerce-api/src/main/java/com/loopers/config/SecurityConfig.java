@@ -42,6 +42,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/v1/users/password").authenticated()
+                .requestMatchers("/api/v1/likes/**").authenticated()
                 .anyRequest().permitAll())
             .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedEntryPoint))
             .addFilterBefore(new HeaderAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class);

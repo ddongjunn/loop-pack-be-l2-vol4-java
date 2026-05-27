@@ -35,6 +35,11 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    public List<Product> findAllByIdIn(List<Long> ids) {
+        return productJpaRepository.findAllByIdInAndDeletedAtIsNull(ids);
+    }
+
+    @Override
     public int softDeleteByBrandId(Long brandId) {
         return productJpaRepository.softDeleteByBrandId(brandId);
     }
