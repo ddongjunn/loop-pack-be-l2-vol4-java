@@ -1,13 +1,16 @@
 package com.loopers.product.interfaces.api;
 
+import com.loopers.brand.domain.Brand;
+import com.loopers.brand.domain.BrandRepository;
 import com.loopers.interfaces.api.ApiResponse;
-import com.loopers.product.application.ProductDisplayStatus;
 import com.loopers.product.domain.Product;
+import com.loopers.product.domain.ProductDisplayStatus;
 import com.loopers.product.domain.ProductRepository;
 import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,24 +31,33 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 class ProductV1ApiE2ETest {
 
     private static final String ENDPOINT = "/api/v1/products";
-    private static final Long BRAND_ID = 1L;
 
     private final TestRestTemplate testRestTemplate;
+    private final BrandRepository brandRepository;
     private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
     private final DatabaseCleanUp databaseCleanUp;
 
+    private Long brandId;
+
     @Autowired
     public ProductV1ApiE2ETest(
             TestRestTemplate testRestTemplate,
+            BrandRepository brandRepository,
             ProductRepository productRepository,
             ProductStockRepository productStockRepository,
             DatabaseCleanUp databaseCleanUp
     ) {
         this.testRestTemplate = testRestTemplate;
+        this.brandRepository = brandRepository;
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
         this.databaseCleanUp = databaseCleanUp;
+    }
+
+    @BeforeEach
+    void setUp() {
+        brandId = brandRepository.save(Brand.create("나이키", "설명", "https://cdn/brand.png")).getId();
     }
 
     @AfterEach
@@ -54,13 +66,13 @@ class ProductV1ApiE2ETest {
     }
 
     private Product saveOnSale(String name, long price, int stock) {
-        Product product = productRepository.save(Product.create(BRAND_ID, name, "설명", price, "https://cdn/" + name + ".png"));
+        Product product = productRepository.save(Product.create(brandId, name, "설명", price, "https://cdn/" + name + ".png"));
         productStockRepository.save(ProductStock.create(product.getId(), stock));
         return product;
     }
 
     private Product saveSuspended(String name, long price, int stock) {
-        Product product = Product.create(BRAND_ID, name, "설명", price, null);
+        Product product = Product.create(brandId, name, "설명", price, null);
         product.suspend();
         product = productRepository.save(product);
         productStockRepository.save(ProductStock.create(product.getId(), stock));
@@ -77,7 +89,7 @@ class ProductV1ApiE2ETest {
     class GetOne {
 
         @Test
-        @DisplayName("판매중 상품을 조회하면 200 과 displayStatus=ON_SALE 을 반환한다")
+        @DisplayName("판매중 상품을 조회하면 200 과 브랜드명·좋아요수·displayStatus=ON_SALE 을 반환한다")
         void givenOnSaleProduct_whenGet_thenReturnsDetail() {
             Product product = saveOnSale("셔츠", 29_000L, 10);
 
@@ -86,6 +98,8 @@ class ProductV1ApiE2ETest {
             assertAll(
                     () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
                     () -> assertThat(response.getBody().data().name()).isEqualTo("셔츠"),
+                    () -> assertThat(response.getBody().data().brandName()).isEqualTo("나이키"),
+                    () -> assertThat(response.getBody().data().likeCount()).isEqualTo(0L),
                     () -> assertThat(response.getBody().data().displayStatus()).isEqualTo(ProductDisplayStatus.ON_SALE)
             );
         }
@@ -138,7 +152,10 @@ class ProductV1ApiE2ETest {
                     () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
                     () -> assertThat(response.getBody().data())
                             .extracting(ProductV1Response.Detail::name)
-                            .containsExactlyInAnyOrder("A", "B")
+                            .containsExactlyInAnyOrder("A", "B"),
+                    () -> assertThat(response.getBody().data())
+                            .extracting(ProductV1Response.Detail::brandName)
+                            .containsOnly("나이키")
             );
         }
 

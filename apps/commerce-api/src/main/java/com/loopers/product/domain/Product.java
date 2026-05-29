@@ -67,6 +67,16 @@ public class Product extends BaseEntity {
         this.status = ProductStatus.ON_SALE;
     }
 
+    public ProductDisplayStatus displayStatus(int stockQuantity) {
+        if (status == ProductStatus.SUSPENDED) {
+            return ProductDisplayStatus.SUSPENDED;
+        }
+        if (stockQuantity <= 0) {
+            return ProductDisplayStatus.SOLD_OUT;
+        }
+        return ProductDisplayStatus.ON_SALE;
+    }
+
     private void validate() {
         if (brandId == null) {
             throw new CoreException(ErrorType.BAD_REQUEST, "brandId 는 비어있을 수 없습니다.");

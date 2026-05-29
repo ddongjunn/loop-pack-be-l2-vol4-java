@@ -1,27 +1,32 @@
 package com.loopers.product.application;
 
 import com.loopers.product.domain.Product;
+import com.loopers.product.domain.ProductDisplayStatus;
 
 public class ProductResult {
 
     public record Detail(
         Long id,
         Long brandId,
+        String brandName,
         String name,
         String description,
         long price,
         ProductDisplayStatus displayStatus,
-        String thumbnailUrl
+        String thumbnailUrl,
+        long likeCount
     ) {
-        public static Detail from(Product product, int stockQuantity) {
+        public static Detail from(Product product, String brandName, int stockQuantity, long likeCount) {
             return new Detail(
                 product.getId(),
                 product.getBrandId(),
+                brandName,
                 product.getName(),
                 product.getDescription(),
                 product.getPrice(),
-                ProductDisplayStatus.of(product.getStatus(), stockQuantity),
-                product.getThumbnailUrl()
+                product.displayStatus(stockQuantity),
+                product.getThumbnailUrl(),
+                likeCount
             );
         }
     }

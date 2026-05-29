@@ -30,6 +30,14 @@ public class BrandRepositoryImpl implements BrandRepository {
     }
 
     @Override
+    public List<Brand> findAllByIdIn(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return brandJpaRepository.findAllByIdInAndDeletedAtIsNull(ids);
+    }
+
+    @Override
     public boolean existsById(Long id) {
         return brandJpaRepository.existsByIdAndDeletedAtIsNull(id);
     }

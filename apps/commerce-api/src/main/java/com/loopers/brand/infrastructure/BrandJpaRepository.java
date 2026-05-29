@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface BrandJpaRepository extends JpaRepository<Brand, Long> {
     Optional<Brand> findByIdAndDeletedAtIsNull(Long id);
     List<Brand> findAllByDeletedAtIsNull();
+    List<Brand> findAllByIdInAndDeletedAtIsNull(List<Long> ids);
     boolean existsByIdAndDeletedAtIsNull(Long id);
     boolean existsByName(String name);
 
