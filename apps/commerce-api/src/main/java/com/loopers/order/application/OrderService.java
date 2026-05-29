@@ -13,6 +13,7 @@ import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import com.loopers.user.application.UserReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.util.List;
 @Component
 public class OrderService {
 
+    private final UserReader userReader;
     private final ProductReader productReader;
     private final ProductStockRepository productStockRepository;
     private final BrandReader brandReader;
@@ -35,6 +37,9 @@ public class OrderService {
 
     @Transactional
     public OrderResult.Detail create(OrderCommand.Create command) {
+        // 주문자가 존재하지 않으면 재고 차감 전에 NOT_FOUND 로 종료한다.
+        userReader.get(command.userId());
+
         // 재고 락은 productId 오름차순으로 획득해 동시 주문 deadlock 을 피한다.
         List<OrderCommand.Line> sortedLines = command.items().stream()
                 .sorted(Comparator.comparing(OrderCommand.Line::productId))

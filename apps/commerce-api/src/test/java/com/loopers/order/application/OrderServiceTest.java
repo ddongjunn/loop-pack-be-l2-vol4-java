@@ -14,6 +14,7 @@ import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import com.loopers.user.application.UserReader;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -36,6 +37,7 @@ class OrderServiceTest {
 
     private static final Long USER_ID = 1L;
 
+    private final UserReader userReader = mock(UserReader.class);
     private final ProductReader productReader = mock(ProductReader.class);
     private final ProductStockRepository productStockRepository = mock(ProductStockRepository.class);
     private final BrandReader brandReader = mock(BrandReader.class);
@@ -45,7 +47,7 @@ class OrderServiceTest {
     private final PaymentService paymentService = mock(PaymentService.class);
 
     private final OrderService orderService = new OrderService(
-            productReader, productStockRepository, brandReader,
+            userReader, productReader, productStockRepository, brandReader,
             orderRepository, orderItemRepository, orderNumberGenerator, paymentService
     );
 
@@ -130,6 +132,20 @@ class OrderServiceTest {
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorType", ErrorType.NOT_FOUND);
 
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("주문 생성: 존재하지 않는 사용자면 NOT_FOUND 가 전파되고 재고·주문을 건드리지 않는다")
+    void givenNonExistingUser_whenCreate_thenThrowsNotFoundAndTouchesNothing() {
+        when(userReader.get(USER_ID))
+                .thenThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+        assertThatThrownBy(() -> orderService.create(command(List.of(new OrderCommand.Line(10L, 1)))))
+                .isInstanceOf(CoreException.class)
+                .hasFieldOrPropertyWithValue("errorType", ErrorType.NOT_FOUND);
+
+        verify(productStockRepository, never()).findByProductIdForUpdate(any());
         verify(orderRepository, never()).save(any());
     }
 
