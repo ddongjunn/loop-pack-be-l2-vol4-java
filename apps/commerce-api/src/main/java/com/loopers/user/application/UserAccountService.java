@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @RequiredArgsConstructor
 @Component
-public class UserService {
+public class UserAccountService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -39,11 +39,6 @@ public class UserService {
         return userRepository.findByLoginId(loginId)
             .filter(user -> passwordEncoder.matches(rawPassword, user.getPassword()))
             .map(User::getId);
-    }
-
-    @Transactional(readOnly = true)
-    public UserResult.Detail getUser(Long userId) {
-        return UserResult.Detail.from(get(userId));
     }
 
     @Transactional

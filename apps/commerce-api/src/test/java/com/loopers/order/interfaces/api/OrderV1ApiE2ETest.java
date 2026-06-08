@@ -5,8 +5,8 @@ import com.loopers.brand.application.BrandCommand;
 import com.loopers.interfaces.api.ApiResponse;
 import com.loopers.product.application.ProductAdminService;
 import com.loopers.product.application.ProductCommand;
+import com.loopers.user.application.UserAccountService;
 import com.loopers.user.application.UserCommand;
-import com.loopers.user.application.UserService;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +37,7 @@ class OrderV1ApiE2ETest {
     private static final String RAW_PASSWORD = "Passw0rd!";
 
     private final TestRestTemplate testRestTemplate;
-    private final UserService userService;
+    private final UserAccountService userAccountService;
     private final BrandAdminService brandAdminService;
     private final ProductAdminService productAdminService;
     private final DatabaseCleanUp databaseCleanUp;
@@ -51,13 +51,13 @@ class OrderV1ApiE2ETest {
     @Autowired
     public OrderV1ApiE2ETest(
             TestRestTemplate testRestTemplate,
-            UserService userService,
+            UserAccountService userAccountService,
             BrandAdminService brandAdminService,
             ProductAdminService productAdminService,
             DatabaseCleanUp databaseCleanUp
     ) {
         this.testRestTemplate = testRestTemplate;
-        this.userService = userService;
+        this.userAccountService = userAccountService;
         this.brandAdminService = brandAdminService;
         this.productAdminService = productAdminService;
         this.databaseCleanUp = databaseCleanUp;
@@ -65,7 +65,7 @@ class OrderV1ApiE2ETest {
 
     @BeforeEach
     void setUp() {
-        userService.signUp(new UserCommand.SignUp(
+        userAccountService.signUp(new UserCommand.SignUp(
                 LOGIN_ID, RAW_PASSWORD, "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
         ));
         Long brandId = brandAdminService.create(new BrandCommand.Create("루퍼스", "설명", null)).id();

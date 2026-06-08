@@ -1,6 +1,6 @@
 package com.loopers.config;
 
-import com.loopers.user.application.UserService;
+import com.loopers.user.application.UserAccountService;
 import com.loopers.support.auth.AdminAuthenticationFilter;
 import com.loopers.support.auth.HeaderAuthenticationFilter;
 import com.loopers.support.auth.UnauthorizedEntryPoint;
@@ -32,7 +32,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
-        UserService userService,
+        UserAccountService userAccountService,
         UnauthorizedEntryPoint unauthorizedEntryPoint
     ) throws Exception {
         http
@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .anyRequest().permitAll())
             .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedEntryPoint))
             .addFilterBefore(new AdminAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(new HeaderAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new HeaderAuthenticationFilter(userAccountService), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

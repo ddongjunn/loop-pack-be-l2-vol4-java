@@ -21,13 +21,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class UserServiceTest {
+class UserAccountServiceTest {
 
     private static final String RAW_PASSWORD = "Passw0rd!";
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final UserService userService = new UserService(userRepository, passwordEncoder);
+    private final UserAccountService userAccountService = new UserAccountService(userRepository, passwordEncoder);
 
     private UserCommand.SignUp signUpCommand() {
         return new UserCommand.SignUp(
@@ -38,7 +38,7 @@ class UserServiceTest {
     private User savedUser() {
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        userService.signUp(signUpCommand());
+        userAccountService.signUp(signUpCommand());
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -70,7 +70,7 @@ class UserServiceTest {
     void givenDuplicateLoginId_whenSignUp_thenThrowsConflictAndDoesNotSave() {
         when(userRepository.existsByLoginId("loopers01")).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.signUp(signUpCommand()))
+        assertThatThrownBy(() -> userAccountService.signUp(signUpCommand()))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.CONFLICT);
 
@@ -82,7 +82,7 @@ class UserServiceTest {
     void givenDuplicateEmail_whenSignUp_thenThrowsConflictAndDoesNotSave() {
         when(userRepository.existsByEmail("looper@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.signUp(signUpCommand()))
+        assertThatThrownBy(() -> userAccountService.signUp(signUpCommand()))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.CONFLICT);
 
@@ -96,7 +96,7 @@ class UserServiceTest {
             "loopers01", "19950321aA", "김루퍼", LocalDate.of(1995, 3, 21), "looper@example.com"
         );
 
-        assertThatThrownBy(() -> userService.signUp(command))
+        assertThatThrownBy(() -> userAccountService.signUp(command))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.BAD_REQUEST);
 
@@ -115,7 +115,7 @@ class UserServiceTest {
         User user = existingUser();
         when(userRepository.findByLoginId("loopers01")).thenReturn(Optional.of(user));
 
-        Optional<Long> result = userService.authenticate("loopers01", RAW_PASSWORD);
+        Optional<Long> result = userAccountService.authenticate("loopers01", RAW_PASSWORD);
 
         assertThat(result).contains(user.getId());
     }
@@ -125,7 +125,7 @@ class UserServiceTest {
     void givenWrongPassword_whenAuthenticate_thenReturnsEmpty() {
         when(userRepository.findByLoginId("loopers01")).thenReturn(Optional.of(existingUser()));
 
-        Optional<Long> result = userService.authenticate("loopers01", "WrongPass1!");
+        Optional<Long> result = userAccountService.authenticate("loopers01", "WrongPass1!");
 
         assertThat(result).isEmpty();
     }
@@ -135,7 +135,7 @@ class UserServiceTest {
     void givenUnknownLoginId_whenAuthenticate_thenReturnsEmpty() {
         when(userRepository.findByLoginId("unknown01")).thenReturn(Optional.empty());
 
-        Optional<Long> result = userService.authenticate("unknown01", RAW_PASSWORD);
+        Optional<Long> result = userAccountService.authenticate("unknown01", RAW_PASSWORD);
 
         assertThat(result).isEmpty();
     }
@@ -148,7 +148,7 @@ class UserServiceTest {
         String newRawPassword = "NewPass1!";
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, newRawPassword);
 
-        userService.changePassword(command);
+        userAccountService.changePassword(command);
 
         assertThat(user.getPassword()).isNotEqualTo(newRawPassword);
         assertThat(passwordEncoder.matches(newRawPassword, user.getPassword())).isTrue();
@@ -160,7 +160,7 @@ class UserServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(999L, RAW_PASSWORD, "NewPass1!");
 
-        assertThatThrownBy(() -> userService.changePassword(command))
+        assertThatThrownBy(() -> userAccountService.changePassword(command))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.NOT_FOUND);
     }
@@ -172,7 +172,7 @@ class UserServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, "WrongPass1!", "NewPass1!");
 
-        assertThatThrownBy(() -> userService.changePassword(command))
+        assertThatThrownBy(() -> userAccountService.changePassword(command))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.BAD_REQUEST);
     }
@@ -184,7 +184,7 @@ class UserServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, "19950321aA");
 
-        assertThatThrownBy(() -> userService.changePassword(command))
+        assertThatThrownBy(() -> userAccountService.changePassword(command))
             .isInstanceOf(CoreException.class)
             .hasFieldOrPropertyWithValue("errorType", ErrorType.BAD_REQUEST);
     }
