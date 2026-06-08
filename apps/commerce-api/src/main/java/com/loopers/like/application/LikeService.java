@@ -20,7 +20,7 @@ public class LikeService {
 
     @Transactional
     public void register(Long userId, Long productId) {
-        productReader.getActive(productId);
+        productReader.ensureActiveExists(productId);
         likeRepository.findByUserIdAndProductId(userId, productId)
                 .ifPresentOrElse(
                         Like::restore,

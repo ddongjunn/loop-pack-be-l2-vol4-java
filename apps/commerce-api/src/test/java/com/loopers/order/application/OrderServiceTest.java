@@ -1,14 +1,13 @@
 package com.loopers.order.application;
 
 import com.loopers.brand.application.BrandReader;
-import com.loopers.brand.domain.Brand;
 import com.loopers.order.domain.Order;
 import com.loopers.order.domain.OrderItem;
 import com.loopers.order.domain.OrderItemRepository;
 import com.loopers.order.domain.OrderRepository;
 import com.loopers.order.domain.OrderStatus;
+import com.loopers.product.application.ProductInfo;
 import com.loopers.product.application.ProductReader;
-import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.support.error.CoreException;
@@ -26,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -58,9 +58,8 @@ class OrderServiceTest {
     }
 
     private void stubProduct(Long productId, Long brandId, String name, long price, int stockQty) {
-        Product product = Product.create(brandId, name, "설명", price, "thumb.jpg");
-        when(productReader.getActive(productId)).thenReturn(product);
-        when(brandReader.get(brandId)).thenReturn(Brand.create("브랜드" + brandId, "설명", null));
+        when(productReader.getInfo(productId)).thenReturn(new ProductInfo(name, brandId, price));
+        when(brandReader.getName(brandId)).thenReturn("브랜드" + brandId);
         when(productStockRepository.findByProductIdForUpdate(productId))
                 .thenReturn(Optional.of(ProductStock.create(productId, stockQty)));
     }
@@ -123,7 +122,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("주문 생성: 삭제/판매중지/존재하지 않는 상품이면 NOT_FOUND 가 전파되고 주문을 저장하지 않는다")
     void givenInactiveProduct_whenCreate_thenThrowsNotFoundAndSavesNothing() {
-        when(productReader.getActive(99L))
+        when(productReader.getInfo(99L))
                 .thenThrow(new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."));
 
         assertThatThrownBy(() -> orderService.create(command(List.of(new OrderCommand.Line(99L, 1)))))
@@ -136,8 +135,8 @@ class OrderServiceTest {
     @Test
     @DisplayName("주문 생성: 존재하지 않는 사용자면 NOT_FOUND 가 전파되고 재고·주문을 건드리지 않는다")
     void givenNonExistingUser_whenCreate_thenThrowsNotFoundAndTouchesNothing() {
-        when(userReader.get(USER_ID))
-                .thenThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        doThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."))
+                .when(userReader).ensureExists(USER_ID);
 
         assertThatThrownBy(() -> orderService.create(command(List.of(new OrderCommand.Line(10L, 1)))))
                 .isInstanceOf(CoreException.class)

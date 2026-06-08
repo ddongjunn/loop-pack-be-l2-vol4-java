@@ -32,7 +32,7 @@ public class UserV1Controller implements UserV1ApiSpec {
     @GetMapping("/me")
     @Override
     public ApiResponse<UserV1Response.Masked> getMyInfo(@AuthenticationPrincipal Long userId) {
-        UserResult.Detail result = userService.get(userId);
+        UserResult.Detail result = userService.getUser(userId);
         return ApiResponse.success(UserV1Response.Masked.from(result));
     }
 

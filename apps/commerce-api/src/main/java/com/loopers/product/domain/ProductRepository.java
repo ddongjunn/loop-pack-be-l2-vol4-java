@@ -7,6 +7,7 @@ public interface ProductRepository {
     Product save(Product product);
     Optional<Product> findById(Long id);
     Optional<Product> findActiveById(Long id);
+    boolean existsActiveById(Long id);
     List<Product> findAllOnSaleOrderByLatest();
     List<Product> findAllOnSaleOrderByPriceAsc();
     List<Product> findAllOnSaleOrderByLikeCountDesc();

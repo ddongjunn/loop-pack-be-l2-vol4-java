@@ -6,6 +6,8 @@ import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductRepository;
 import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,23 +20,22 @@ import java.util.stream.Collectors;
 @Component
 public class ProductQueryService {
 
-    private final ProductReader productReader;
     private final BrandReader brandReader;
     private final LikeReader likeReader;
     private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
 
     @Transactional(readOnly = true)
-    public ProductResult.Detail get(Long productId) {
-        Product product = productReader.getActive(productId);
-        int stockQuantity = productReader.getStock(productId).getQuantity();
-        String brandName = brandReader.get(product.getBrandId()).getName();
+    public ProductResult.Detail getProduct(Long productId) {
+        Product product = get(productId);
+        int stockQuantity = getStock(productId).getQuantity();
+        String brandName = brandReader.getName(product.getBrandId());
         long likeCount = likeReader.countActive(productId);
         return ProductResult.Detail.from(product, brandName, stockQuantity, likeCount);
     }
 
     @Transactional(readOnly = true)
-    public List<ProductResult.Detail> getAll(ProductSortOption sortOption) {
+    public List<ProductResult.Detail> getProducts(ProductSortOption sortOption) {
         List<Product> products = switch (sortOption) {
             case LATEST -> productRepository.findAllOnSaleOrderByLatest();
             case PRICE_ASC -> productRepository.findAllOnSaleOrderByPriceAsc();
@@ -60,5 +61,15 @@ public class ProductQueryService {
                         stockByProductId.getOrDefault(product.getId(), 0),
                         likeCountByProductId.getOrDefault(product.getId(), 0L)))
                 .toList();
+    }
+
+    private Product get(Long productId) {
+        return productRepository.findActiveById(productId)
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."));
+    }
+
+    private ProductStock getStock(Long productId) {
+        return productStockRepository.findByProductId(productId)
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "상품 재고를 찾을 수 없습니다."));
     }
 }

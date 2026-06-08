@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -15,16 +16,15 @@ import static org.mockito.Mockito.when;
 class BrandServiceTest {
 
     private final BrandRepository brandRepository = mock(BrandRepository.class);
-    private final BrandReader brandReader = mock(BrandReader.class);
-    private final BrandService brandService = new BrandService(brandRepository, brandReader);
+    private final BrandService brandService = new BrandService(brandRepository);
 
     @Test
     @DisplayName("get 은 reader 가 반환한 brand 를 Detail 로 매핑해서 반환한다")
     void givenExistingBrandId_whenGet_thenReturnsBrandDetail() {
         Brand brand = Brand.create("루퍼스", "설명", "https://cdn.loopers.com/l.png");
-        when(brandReader.get(1L)).thenReturn(brand);
+        when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
 
-        BrandResult.Detail result = brandService.get(1L);
+        BrandResult.Detail result = brandService.getBrand(1L);
 
         assertAll(
                 () -> assertThat(result.name()).isEqualTo("루퍼스"),
@@ -40,7 +40,7 @@ class BrandServiceTest {
         Brand b = Brand.create("B", "설명B", null);
         when(brandRepository.findAll()).thenReturn(List.of(a, b));
 
-        List<BrandResult.Detail> result = brandService.getAll();
+        List<BrandResult.Detail> result = brandService.getBrands();
 
         assertThat(result)
                 .extracting(BrandResult.Detail::name)

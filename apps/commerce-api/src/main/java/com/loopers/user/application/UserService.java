@@ -18,7 +18,6 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserReader userReader;
 
     @Transactional
     public UserResult.Detail signUp(UserCommand.SignUp command) {
@@ -43,15 +42,20 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResult.Detail get(Long userId) {
-        return UserResult.Detail.from(userReader.get(userId));
+    public UserResult.Detail getUser(Long userId) {
+        return UserResult.Detail.from(get(userId));
     }
 
     @Transactional
     public void changePassword(UserCommand.ChangePassword command) {
-        User user = userReader.get(command.userId());
+        User user = get(command.userId());
         validateChangePassword(user, command.currentPassword(), command.newPassword());
         user.changePassword(passwordEncoder.encode(command.newPassword()));
+    }
+
+    private User get(Long userId) {
+        return userRepository.findById(userId)
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."));
     }
 
     private void validateSignUp(UserCommand.SignUp command) {

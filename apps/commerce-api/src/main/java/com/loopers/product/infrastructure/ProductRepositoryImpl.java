@@ -31,6 +31,11 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    public boolean existsActiveById(Long id) {
+        return productJpaRepository.existsByIdAndStatusAndDeletedAtIsNull(id, ProductStatus.ON_SALE);
+    }
+
+    @Override
     public List<Product> findAllOnSaleOrderByLatest() {
         return productJpaRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ProductStatus.ON_SALE);
     }

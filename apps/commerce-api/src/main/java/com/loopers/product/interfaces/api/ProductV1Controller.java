@@ -22,7 +22,7 @@ public class ProductV1Controller implements ProductV1ApiSpec {
     @GetMapping("/{productId}")
     @Override
     public ApiResponse<ProductV1Response.Detail> get(@PathVariable Long productId) {
-        return ApiResponse.success(ProductV1Response.Detail.from(productQueryService.get(productId)));
+        return ApiResponse.success(ProductV1Response.Detail.from(productQueryService.getProduct(productId)));
     }
 
     @GetMapping
@@ -30,7 +30,7 @@ public class ProductV1Controller implements ProductV1ApiSpec {
     public ApiResponse<List<ProductV1Response.Detail>> getAll(
         @RequestParam(defaultValue = "LATEST") ProductSortOption sort
     ) {
-        List<ProductV1Response.Detail> responses = productQueryService.getAll(sort).stream()
+        List<ProductV1Response.Detail> responses = productQueryService.getProducts(sort).stream()
                 .map(ProductV1Response.Detail::from)
                 .toList();
         return ApiResponse.success(responses);

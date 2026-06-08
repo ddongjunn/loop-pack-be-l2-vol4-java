@@ -27,8 +27,7 @@ class UserServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final UserReader userReader = mock(UserReader.class);
-    private final UserService userService = new UserService(userRepository, passwordEncoder, userReader);
+    private final UserService userService = new UserService(userRepository, passwordEncoder);
 
     private UserCommand.SignUp signUpCommand() {
         return new UserCommand.SignUp(
@@ -145,7 +144,7 @@ class UserServiceTest {
     @DisplayName("비밀번호 수정 시 새 비밀번호가 인코딩되어 갱신된다")
     void givenValidCommand_whenChangePassword_thenUpdatesPasswordToEncoded() {
         User user = existingUser();
-        when(userReader.get(1L)).thenReturn(user);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         String newRawPassword = "NewPass1!";
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, newRawPassword);
 
@@ -158,7 +157,7 @@ class UserServiceTest {
     @Test
     @DisplayName("비밀번호 수정 시 사용자가 존재하지 않으면 NOT_FOUND 예외가 발생한다")
     void givenNonExistingUser_whenChangePassword_thenThrowsNotFound() {
-        when(userReader.get(999L)).thenThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(999L, RAW_PASSWORD, "NewPass1!");
 
         assertThatThrownBy(() -> userService.changePassword(command))
@@ -170,7 +169,7 @@ class UserServiceTest {
     @DisplayName("비밀번호 수정 시 현재 비밀번호가 일치하지 않으면 BAD_REQUEST 예외가 발생한다")
     void givenMismatchingCurrentPassword_whenChangePassword_thenThrowsBadRequest() {
         User user = existingUser();
-        when(userReader.get(1L)).thenReturn(user);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, "WrongPass1!", "NewPass1!");
 
         assertThatThrownBy(() -> userService.changePassword(command))
@@ -182,7 +181,7 @@ class UserServiceTest {
     @DisplayName("비밀번호 수정 시 새 비밀번호에 생년월일이 포함되면 BAD_REQUEST 예외가 발생한다")
     void givenNewPasswordContainingBirthDate_whenChangePassword_thenThrowsBadRequest() {
         User user = existingUser();
-        when(userReader.get(1L)).thenReturn(user);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         UserCommand.ChangePassword command = new UserCommand.ChangePassword(1L, RAW_PASSWORD, "19950321aA");
 
         assertThatThrownBy(() -> userService.changePassword(command))

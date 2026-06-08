@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,14 +34,9 @@ class LikeServiceTest {
     private final ProductReader productReader = mock(ProductReader.class);
     private final LikeService likeService = new LikeService(likeRepository, productRepository, productReader);
 
-    private Product activeProduct() {
-        return Product.create(1L, "셔츠", "설명", 10_000L, null);
-    }
-
     @Test
     @DisplayName("register: 상품 존재 + Like 없으면 새로 저장한다")
     void givenActiveProductAndNoLike_whenRegister_thenSavesNewLike() {
-        when(productReader.getActive(PRODUCT_ID)).thenReturn(activeProduct());
         when(likeRepository.findByUserIdAndProductId(USER_ID, PRODUCT_ID)).thenReturn(Optional.empty());
 
         likeService.register(USER_ID, PRODUCT_ID);
@@ -57,7 +53,6 @@ class LikeServiceTest {
     @DisplayName("register: 이미 active Like 가 있으면 restore (deletedAt 그대로 null)")
     void givenActiveLike_whenRegister_thenRemainsActive() {
         Like active = Like.create(USER_ID, PRODUCT_ID);
-        when(productReader.getActive(PRODUCT_ID)).thenReturn(activeProduct());
         when(likeRepository.findByUserIdAndProductId(USER_ID, PRODUCT_ID)).thenReturn(Optional.of(active));
 
         likeService.register(USER_ID, PRODUCT_ID);
@@ -71,7 +66,6 @@ class LikeServiceTest {
     void givenCancelledLike_whenRegister_thenRestoresLike() {
         Like cancelled = Like.create(USER_ID, PRODUCT_ID);
         cancelled.delete();
-        when(productReader.getActive(PRODUCT_ID)).thenReturn(activeProduct());
         when(likeRepository.findByUserIdAndProductId(USER_ID, PRODUCT_ID)).thenReturn(Optional.of(cancelled));
 
         likeService.register(USER_ID, PRODUCT_ID);
@@ -81,10 +75,10 @@ class LikeServiceTest {
     }
 
     @Test
-    @DisplayName("register: 삭제·판매중지 상품(getActive 미존재)이면 NOT_FOUND 가 전파되고 Like 저장하지 않는다")
+    @DisplayName("register: 삭제·판매중지 상품(ensureActiveExists 실패)이면 NOT_FOUND 가 전파되고 Like 저장하지 않는다")
     void givenNonActiveProduct_whenRegister_thenPropagatesNotFoundAndSavesNothing() {
-        when(productReader.getActive(PRODUCT_ID))
-                .thenThrow(new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."));
+        doThrow(new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."))
+                .when(productReader).ensureActiveExists(PRODUCT_ID);
 
         assertThatThrownBy(() -> likeService.register(USER_ID, PRODUCT_ID))
                 .isInstanceOf(CoreException.class)

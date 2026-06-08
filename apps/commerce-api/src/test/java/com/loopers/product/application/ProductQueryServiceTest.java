@@ -1,7 +1,6 @@
 package com.loopers.product.application;
 
 import com.loopers.brand.application.BrandReader;
-import com.loopers.brand.domain.Brand;
 import com.loopers.like.application.LikeReader;
 import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductDisplayStatus;
@@ -15,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,22 +29,21 @@ class ProductQueryServiceTest {
 
     private final ProductRepository productRepository = mock(ProductRepository.class);
     private final ProductStockRepository productStockRepository = mock(ProductStockRepository.class);
-    private final ProductReader productReader = mock(ProductReader.class);
     private final BrandReader brandReader = mock(BrandReader.class);
     private final LikeReader likeReader = mock(LikeReader.class);
     private final ProductQueryService productQueryService =
-            new ProductQueryService(productReader, brandReader, likeReader, productRepository, productStockRepository);
+            new ProductQueryService(brandReader, likeReader, productRepository, productStockRepository);
 
     @Test
     @DisplayName("get 은 판매중 상품을 재고와 함께 Detail 로 매핑하고, 재고가 있으면 displayStatus=ON_SALE 이다")
     void givenOnSaleProductWithStock_whenGet_thenReturnsDetailWithOnSale() {
         Product product = Product.create(BRAND_ID, "셔츠", "설명", 29_000L, "https://cdn/loopers.png");
-        when(productReader.getActive(1L)).thenReturn(product);
-        when(productReader.getStock(1L)).thenReturn(ProductStock.create(1L, 10));
-        when(brandReader.get(BRAND_ID)).thenReturn(Brand.create("브랜드", null, null));
+        when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+        when(productStockRepository.findByProductId(1L)).thenReturn(Optional.of(ProductStock.create(1L, 10)));
+        when(brandReader.getName(BRAND_ID)).thenReturn("브랜드");
         when(likeReader.countActive(1L)).thenReturn(0L);
 
-        ProductResult.Detail result = productQueryService.get(1L);
+        ProductResult.Detail result = productQueryService.getProduct(1L);
 
         assertAll(
                 () -> assertThat(result.name()).isEqualTo("셔츠"),
@@ -57,12 +56,12 @@ class ProductQueryServiceTest {
     @DisplayName("get 은 재고가 0 이면 displayStatus=SOLD_OUT 으로 계산한다")
     void givenOnSaleProductWithZeroStock_whenGet_thenDisplayStatusSoldOut() {
         Product product = Product.create(BRAND_ID, "셔츠", "설명", 29_000L, null);
-        when(productReader.getActive(1L)).thenReturn(product);
-        when(productReader.getStock(1L)).thenReturn(ProductStock.create(1L, 0));
-        when(brandReader.get(BRAND_ID)).thenReturn(Brand.create("브랜드", null, null));
+        when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+        when(productStockRepository.findByProductId(1L)).thenReturn(Optional.of(ProductStock.create(1L, 0)));
+        when(brandReader.getName(BRAND_ID)).thenReturn("브랜드");
         when(likeReader.countActive(1L)).thenReturn(0L);
 
-        ProductResult.Detail result = productQueryService.get(1L);
+        ProductResult.Detail result = productQueryService.getProduct(1L);
 
         assertThat(result.displayStatus()).isEqualTo(ProductDisplayStatus.SOLD_OUT);
     }
@@ -71,12 +70,12 @@ class ProductQueryServiceTest {
     @DisplayName("get 은 브랜드명과 활성 좋아요 수를 함께 조합해 반환한다")
     void givenProduct_whenGet_thenIncludesBrandNameAndLikeCount() {
         Product product = Product.create(BRAND_ID, "셔츠", "설명", 29_000L, null);
-        when(productReader.getActive(1L)).thenReturn(product);
-        when(productReader.getStock(1L)).thenReturn(ProductStock.create(1L, 10));
-        when(brandReader.get(BRAND_ID)).thenReturn(Brand.create("나이키", null, null));
+        when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+        when(productStockRepository.findByProductId(1L)).thenReturn(Optional.of(ProductStock.create(1L, 10)));
+        when(brandReader.getName(BRAND_ID)).thenReturn("나이키");
         when(likeReader.countActive(1L)).thenReturn(5L);
 
-        ProductResult.Detail result = productQueryService.get(1L);
+        ProductResult.Detail result = productQueryService.getProduct(1L);
 
         assertAll(
                 () -> assertThat(result.brandName()).isEqualTo("나이키"),
@@ -87,10 +86,9 @@ class ProductQueryServiceTest {
     @Test
     @DisplayName("get 은 판매중지·삭제 상품(getActive 미존재)이면 NOT_FOUND 가 전파된다")
     void givenNonActiveProduct_whenGet_thenPropagatesNotFound() {
-        when(productReader.getActive(999L))
-                .thenThrow(new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."));
+        when(productRepository.findActiveById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productQueryService.get(999L))
+        assertThatThrownBy(() -> productQueryService.getProduct(999L))
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorType", ErrorType.NOT_FOUND);
     }
@@ -105,7 +103,7 @@ class ProductQueryServiceTest {
         when(brandReader.getNames(anyList())).thenReturn(Map.of());
         when(likeReader.countActiveByProductIds(anyList())).thenReturn(Map.of());
 
-        List<ProductResult.Detail> result = productQueryService.getAll(ProductSortOption.LATEST);
+        List<ProductResult.Detail> result = productQueryService.getProducts(ProductSortOption.LATEST);
 
         assertThat(result)
                 .extracting(ProductResult.Detail::name)
@@ -122,7 +120,7 @@ class ProductQueryServiceTest {
         when(brandReader.getNames(anyList())).thenReturn(Map.of());
         when(likeReader.countActiveByProductIds(anyList())).thenReturn(Map.of());
 
-        List<ProductResult.Detail> result = productQueryService.getAll(ProductSortOption.PRICE_ASC);
+        List<ProductResult.Detail> result = productQueryService.getProducts(ProductSortOption.PRICE_ASC);
 
         assertThat(result)
                 .extracting(ProductResult.Detail::name)
@@ -139,7 +137,7 @@ class ProductQueryServiceTest {
         when(brandReader.getNames(anyList())).thenReturn(Map.of());
         when(likeReader.countActiveByProductIds(anyList())).thenReturn(Map.of());
 
-        List<ProductResult.Detail> result = productQueryService.getAll(ProductSortOption.LIKES_DESC);
+        List<ProductResult.Detail> result = productQueryService.getProducts(ProductSortOption.LIKES_DESC);
 
         assertThat(result)
                 .extracting(ProductResult.Detail::name)

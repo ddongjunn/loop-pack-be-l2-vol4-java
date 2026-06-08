@@ -1,14 +1,13 @@
 package com.loopers.order.application;
 
 import com.loopers.brand.application.BrandReader;
-import com.loopers.brand.domain.Brand;
 import com.loopers.order.domain.Order;
 import com.loopers.order.domain.OrderItem;
 import com.loopers.order.domain.OrderItemRepository;
 import com.loopers.order.domain.OrderRepository;
 import com.loopers.order.domain.ShippingDestination;
+import com.loopers.product.application.ProductInfo;
 import com.loopers.product.application.ProductReader;
-import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.support.error.CoreException;
@@ -38,7 +37,7 @@ public class OrderService {
     @Transactional
     public OrderResult.Detail create(OrderCommand.Create command) {
         // 주문자가 존재하지 않으면 재고 차감 전에 NOT_FOUND 로 종료한다.
-        userReader.get(command.userId());
+        userReader.ensureExists(command.userId());
 
         // 재고 락은 productId 오름차순으로 획득해 동시 주문 deadlock 을 피한다.
         List<OrderCommand.Line> sortedLines = command.items().stream()
@@ -47,16 +46,16 @@ public class OrderService {
 
         List<OrderItem> orderItems = new ArrayList<>();
         for (OrderCommand.Line line : sortedLines) {
-            // getActive 는 ON_SALE·미삭제 상품만 반환하므로 삭제·판매중지(SUSPENDED) 상품 주문을 함께 막는다.
-            Product product = productReader.getActive(line.productId());
+            // getInfo 는 ON_SALE·미삭제 상품만 반환하므로 삭제·판매중지(SUSPENDED) 상품 주문을 함께 막는다.
+            ProductInfo product = productReader.getInfo(line.productId());
             ProductStock stock = productStockRepository.findByProductIdForUpdate(line.productId())
                     .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "상품 재고를 찾을 수 없습니다."));
             stock.decrease(line.quantity());
 
-            Brand brand = brandReader.get(product.getBrandId());
+            String brandName = brandReader.getName(product.brandId());
             orderItems.add(OrderItem.create(
-                    line.productId(), product.getName(), product.getBrandId(), brand.getName(),
-                    product.getPrice(), line.quantity()
+                    line.productId(), product.name(), product.brandId(), brandName,
+                    product.price(), line.quantity()
             ));
         }
 

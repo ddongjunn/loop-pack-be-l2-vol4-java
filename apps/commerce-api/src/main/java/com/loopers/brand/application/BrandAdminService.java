@@ -17,7 +17,6 @@ import java.util.List;
 public class BrandAdminService {
 
     private final BrandRepository brandRepository;
-    private final BrandReader brandReader;
     private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
 
@@ -32,7 +31,7 @@ public class BrandAdminService {
 
     @Transactional
     public BrandResult.Detail update(BrandCommand.Update command) {
-        Brand brand = brandReader.get(command.brandId());
+        Brand brand = get(command.brandId());
         if (!brand.getName().equals(command.name()) && brandRepository.existsByName(command.name())) {
             throw new CoreException(ErrorType.CONFLICT, "이미 존재하는 브랜드명입니다.");
         }
@@ -42,21 +41,26 @@ public class BrandAdminService {
 
     @Transactional
     public void delete(Long brandId) {
-        brandReader.get(brandId);
+        get(brandId);
         productStockRepository.softDeleteByBrandId(brandId);
         productRepository.softDeleteByBrandId(brandId);
         brandRepository.softDeleteById(brandId);
     }
 
     @Transactional(readOnly = true)
-    public BrandResult.Detail get(Long brandId) {
-        return BrandResult.Detail.from(brandReader.get(brandId));
+    public BrandResult.Detail getBrand(Long brandId) {
+        return BrandResult.Detail.from(get(brandId));
     }
 
     @Transactional(readOnly = true)
-    public List<BrandResult.Detail> getAll() {
+    public List<BrandResult.Detail> getBrands() {
         return brandRepository.findAll().stream()
                 .map(BrandResult.Detail::from)
                 .toList();
+    }
+
+    private Brand get(Long brandId) {
+        return brandRepository.findById(brandId)
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "브랜드를 찾을 수 없습니다."));
     }
 }
