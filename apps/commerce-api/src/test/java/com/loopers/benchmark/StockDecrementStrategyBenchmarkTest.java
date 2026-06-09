@@ -50,33 +50,33 @@ class StockDecrementStrategyBenchmarkTest {
         long pessimisticMs = measure(this::pessimisticDecrement);
         long pessimisticRemain = currentQuantity();
 
-        long atomicMs = measure(this::atomicDecrement);
-        long atomicRemain = currentQuantity();
-
         optimisticRetries.set(0);
         long optimisticMs = measure(this::optimisticDecrement);
         long optimisticRemain = currentQuantity();
 
+        long atomicMs = measure(this::atomicDecrement);
+        long atomicRemain = currentQuantity();
+
         long pessimisticTps = TOTAL_OPS * 1000L / Math.max(pessimisticMs, 1);
-        long atomicTps = TOTAL_OPS * 1000L / Math.max(atomicMs, 1);
         long optimisticTps = TOTAL_OPS * 1000L / Math.max(optimisticMs, 1);
+        long atomicTps = TOTAL_OPS * 1000L / Math.max(atomicMs, 1);
 
         System.out.println("\n========= STOCK DECREMENT STRATEGY (threads=" + THREADS
                 + ", ops=" + TOTAL_OPS + ") =========");
         System.out.printf("A) 비관적 락   (SELECT FOR UPDATE + UPDATE)        : %6d ms | %6d ops/s%n", pessimisticMs, pessimisticTps);
-        System.out.printf("B) 조건부 원자 (UPDATE ... WHERE qty>=1)           : %6d ms | %6d ops/s%n", atomicMs, atomicTps);
-        System.out.printf("C) 낙관적 락   (version CAS + 재시도)              : %6d ms | %6d ops/s  (재시도 %d회, 충돌율 %.0f%%)%n",
+        System.out.printf("B) 낙관적 락   (version CAS + 재시도)              : %6d ms | %6d ops/s  (재시도 %d회, 충돌율 %.0f%%)%n",
                 optimisticMs, optimisticTps, optimisticRetries.get(),
                 100.0 * optimisticRetries.get() / (TOTAL_OPS + optimisticRetries.get()));
-        System.out.printf("=> 처리량 B(%.2f배) > A(1.00배) > C(%.2f배)  [A 기준]%n",
+        System.out.printf("C) 조건부 원자 (UPDATE ... WHERE qty>=1)           : %6d ms | %6d ops/s%n", atomicMs, atomicTps);
+        System.out.printf("=> 처리량 C(%.2f배) > A(1.00배) > B(%.2f배)  [A 기준]%n",
                 (double) atomicTps / Math.max(pessimisticTps, 1),
                 (double) optimisticTps / Math.max(pessimisticTps, 1));
         System.out.println("====================================================================\n");
 
         // 정확성: 각 측정 전 resetStock 으로 초기화되므로, 세 전략 모두 정확히 TOTAL_OPS 만큼 차감되어야 한다.
         assertThat(pessimisticRemain).isEqualTo(INITIAL - TOTAL_OPS);
-        assertThat(atomicRemain).isEqualTo(INITIAL - TOTAL_OPS);
         assertThat(optimisticRemain).isEqualTo(INITIAL - TOTAL_OPS);
+        assertThat(atomicRemain).isEqualTo(INITIAL - TOTAL_OPS);
     }
 
     private interface Decrement {
