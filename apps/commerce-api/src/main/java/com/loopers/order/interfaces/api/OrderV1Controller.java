@@ -3,7 +3,7 @@ package com.loopers.order.interfaces.api;
 import com.loopers.interfaces.api.ApiResponse;
 import com.loopers.order.application.OrderQueryService;
 import com.loopers.order.application.OrderResult;
-import com.loopers.order.application.PlaceOrderService;
+import com.loopers.order.application.PlaceOrderFacade;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,7 +20,7 @@ import java.util.List;
 @RequestMapping("/api/v1/orders")
 public class OrderV1Controller implements OrderV1ApiSpec {
 
-    private final PlaceOrderService placeOrderService;
+    private final PlaceOrderFacade placeOrderFacade;
     private final OrderQueryService orderQueryService;
 
     @PostMapping
@@ -29,7 +29,7 @@ public class OrderV1Controller implements OrderV1ApiSpec {
         @AuthenticationPrincipal Long userId,
         @Valid @RequestBody OrderV1Request.Create request
     ) {
-        OrderResult.Detail result = placeOrderService.place(request.toCommand(userId));
+        OrderResult.Detail result = placeOrderFacade.place(request.toCommand(userId));
         return ApiResponse.success(OrderV1Response.Detail.from(result));
     }
 

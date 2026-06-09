@@ -9,7 +9,6 @@ import com.loopers.order.domain.OrderItem;
 import com.loopers.order.domain.OrderItemRepository;
 import com.loopers.order.domain.OrderRepository;
 import com.loopers.order.domain.OrderStatus;
-import com.loopers.payment.application.PaymentService;
 import com.loopers.product.application.ProductInfo;
 import com.loopers.product.application.ProductReader;
 import com.loopers.product.domain.ProductStock;
@@ -49,12 +48,11 @@ class PlaceOrderServiceTest {
     private final OrderRepository orderRepository = mock(OrderRepository.class);
     private final OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
     private final OrderNumberGenerator orderNumberGenerator = mock(OrderNumberGenerator.class);
-    private final PaymentService paymentService = mock(PaymentService.class);
     private final CouponUsageService couponUsageService = mock(CouponUsageService.class);
 
     private final PlaceOrderService placeOrderService = new PlaceOrderService(
             userReader, productReader, productStockRepository, brandReader,
-            orderRepository, orderItemRepository, orderNumberGenerator, paymentService,
+            orderRepository, orderItemRepository, orderNumberGenerator,
             couponUsageService
     );
 
@@ -84,7 +82,7 @@ class PlaceOrderServiceTest {
         when(orderNumberGenerator.generate()).thenReturn("20260528-000001");
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        OrderResult.Detail result = placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 2))));
+        OrderResult.Detail result = placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(10L, 2))));
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(orderCaptor.capture());
@@ -108,7 +106,7 @@ class PlaceOrderServiceTest {
         when(orderNumberGenerator.generate()).thenReturn("20260528-000001");
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        placeOrderService.place(command(List.of(
+        placeOrderService.createPendingOrder(command(List.of(
                 new OrderCommand.Line(20L, 1),
                 new OrderCommand.Line(10L, 1)
         )));
@@ -124,7 +122,7 @@ class PlaceOrderServiceTest {
         stubProduct(10L, 1L, "셔츠", 29_000L, 1);
         when(orderNumberGenerator.generate()).thenReturn("20260528-000001");
 
-        assertThatThrownBy(() -> placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 5)))))
+        assertThatThrownBy(() -> placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(10L, 5)))))
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.OUT_OF_STOCK);
 
@@ -138,7 +136,7 @@ class PlaceOrderServiceTest {
         when(productReader.getInfo(99L))
                 .thenThrow(new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."));
 
-        assertThatThrownBy(() -> placeOrderService.place(command(List.of(new OrderCommand.Line(99L, 1)))))
+        assertThatThrownBy(() -> placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(99L, 1)))))
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorType.NOT_FOUND);
 
@@ -151,26 +149,12 @@ class PlaceOrderServiceTest {
         doThrow(new CoreException(ErrorType.NOT_FOUND, "사용자를 찾을 수 없습니다."))
                 .when(userReader).ensureExists(USER_ID);
 
-        assertThatThrownBy(() -> placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 1)))))
+        assertThatThrownBy(() -> placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(10L, 1)))))
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorType.NOT_FOUND);
 
         verify(productStockRepository, never()).findByProductIdForUpdate(any());
         verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("주문 생성: 주문 저장 후 결제 통합 지점(PaymentService.pay)을 호출한다")
-    void givenAvailableProducts_whenPlace_thenInvokesPaymentStubAfterSave() {
-        stubProduct(10L, 1L, "셔츠", 29_000L, 50);
-        when(orderNumberGenerator.generate()).thenReturn("20260528-000001");
-        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 1))));
-
-        InOrder inOrder = inOrder(orderRepository, paymentService);
-        inOrder.verify(orderRepository).save(any());
-        inOrder.verify(paymentService).pay(any(), any());
     }
 
     @Test
@@ -180,7 +164,7 @@ class PlaceOrderServiceTest {
         when(orderNumberGenerator.generate()).thenReturn("20260528-000001");
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 1))));
+        placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(10L, 1))));
 
         ArgumentCaptor<OrderItem> itemCaptor = ArgumentCaptor.forClass(OrderItem.class);
         verify(orderItemRepository).save(itemCaptor.capture());
@@ -188,25 +172,22 @@ class PlaceOrderServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 적용: 쿠폰 사용 유스케이스가 돌려준 할인을 반영하고 최종 금액으로 결제한다")
-    void givenCoupon_whenPlace_thenAppliesDiscountAndPaysFinalAmount() {
+    @DisplayName("쿠폰 적용: 쿠폰 사용 유스케이스가 돌려준 할인을 주문에 반영해 저장한다")
+    void givenCoupon_whenPlace_thenAppliesDiscountToSavedOrder() {
         stubProduct(10L, 1L, "셔츠", 29_000L, 50);
         when(orderNumberGenerator.generate()).thenReturn("20260528-000001");
         when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(couponUsageService.use(50L, USER_ID, 58_000L)).thenReturn(Money.of(3_000L));
 
-        placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 2)), 50L));
+        placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(10L, 2)), 50L));
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(orderCaptor.capture());
         Order savedOrder = orderCaptor.getValue();
-        ArgumentCaptor<Money> payCaptor = ArgumentCaptor.forClass(Money.class);
-        verify(paymentService).pay(any(), payCaptor.capture());
         assertAll(
                 () -> assertThat(savedOrder.getUserCouponId()).isEqualTo(50L),
                 () -> assertThat(savedOrder.getDiscountAmount().value()).isEqualTo(3_000L),
-                () -> assertThat(savedOrder.getFinalAmount().value()).isEqualTo(55_000L),
-                () -> assertThat(payCaptor.getValue().value()).isEqualTo(55_000L)
+                () -> assertThat(savedOrder.getFinalAmount().value()).isEqualTo(55_000L)
         );
     }
 
@@ -218,11 +199,10 @@ class PlaceOrderServiceTest {
         when(couponUsageService.use(anyLong(), anyLong(), anyLong()))
                 .thenThrow(new CoreException(ErrorType.NOT_FOUND, CouponErrorCode.COUPON_NOT_FOUND));
 
-        assertThatThrownBy(() -> placeOrderService.place(command(List.of(new OrderCommand.Line(10L, 1)), 50L)))
+        assertThatThrownBy(() -> placeOrderService.createPendingOrder(command(List.of(new OrderCommand.Line(10L, 1)), 50L)))
                 .isInstanceOf(CoreException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CouponErrorCode.COUPON_NOT_FOUND);
 
         verify(orderRepository, never()).save(any());
-        verify(paymentService, never()).pay(any(), any());
     }
 }

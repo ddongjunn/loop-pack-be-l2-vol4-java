@@ -25,4 +25,11 @@ public class CouponUsageService {
         coupon.use(userId, orderAmount, ZonedDateTime.now());
         return coupon.calculateDiscount(orderAmount);
     }
+
+    @Transactional
+    public void restore(Long userCouponId) {
+        userCouponRepository.findByIdForUpdate(userCouponId)
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, CouponErrorCode.COUPON_NOT_FOUND))
+                .restore();
+    }
 }

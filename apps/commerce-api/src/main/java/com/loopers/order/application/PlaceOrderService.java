@@ -8,7 +8,6 @@ import com.loopers.order.domain.OrderItem;
 import com.loopers.order.domain.OrderItemRepository;
 import com.loopers.order.domain.OrderRepository;
 import com.loopers.order.domain.ShippingDestination;
-import com.loopers.payment.application.PaymentService;
 import com.loopers.product.application.ProductInfo;
 import com.loopers.product.application.ProductReader;
 import com.loopers.product.domain.ProductStock;
@@ -36,11 +35,10 @@ public class PlaceOrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final OrderNumberGenerator orderNumberGenerator;
-    private final PaymentService paymentService;
     private final CouponUsageService couponUsageService;
 
     @Transactional
-    public OrderResult.Detail place(OrderCommand.Create command) {
+    public OrderResult.Detail createPendingOrder(OrderCommand.Create command) {
         // 주문자가 존재하지 않으면 재고 차감 전에 NOT_FOUND 로 종료한다.
         userReader.ensureExists(command.userId());
 
@@ -77,9 +75,6 @@ public class PlaceOrderService {
             item.assignOrder(saved.getId());
             orderItemRepository.save(item);
         });
-
-        // 결제 통합 지점. 현재 범위에서는 stub 이라 상태 전이 없이 PENDING 으로 종료된다.
-        paymentService.pay(saved.getId(), saved.getFinalAmount());
 
         return OrderResult.Detail.of(saved, orderItems);
     }

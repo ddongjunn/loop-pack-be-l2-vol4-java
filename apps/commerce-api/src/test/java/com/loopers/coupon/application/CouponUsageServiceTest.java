@@ -69,4 +69,16 @@ class CouponUsageServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(CouponErrorCode.COUPON_EXPIRED);
     }
+
+    @Test
+    @DisplayName("restore 는 사용된 쿠폰을 다시 AVAILABLE 로 되돌린다")
+    void givenUsedCoupon_whenRestore_thenAvailable() {
+        UserCoupon coupon = issued(CouponType.FIXED, 3_000L, null);
+        coupon.use(USER_ID, 10_000L, ZonedDateTime.now());
+        when(userCouponRepository.findByIdForUpdate(USER_COUPON_ID)).thenReturn(Optional.of(coupon));
+
+        couponUsageService.restore(USER_COUPON_ID);
+
+        assertThat(coupon.getStatus()).isEqualTo(CouponStatus.AVAILABLE);
+    }
 }
