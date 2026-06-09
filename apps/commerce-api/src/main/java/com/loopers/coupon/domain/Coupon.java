@@ -50,6 +50,10 @@ public class Coupon extends BaseEntity {
         assign(name, type, value, minOrderAmount, expiredAt);
     }
 
+    public UserCoupon issueTo(Long userId) {
+        return UserCoupon.issue(getId(), userId, type, value, minOrderAmount, expiredAt);
+    }
+
     public boolean isExpired(ZonedDateTime now) {
         return expiredAt.isBefore(now);
     }
