@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -34,7 +35,10 @@ public class OrderCompensationService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.INTERNAL_ERROR, "보상 대상 주문을 찾을 수 없습니다."));
 
-        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        // placeOrder 와 동일하게 productId 오름차순으로 재고 락을 잡아 데드락 여지를 없앤다.
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId).stream()
+                .sorted(Comparator.comparing(OrderItem::getProductId))
+                .toList();
         for (OrderItem item : items) {
             ProductStock stock = productStockRepository.findByProductIdForUpdate(item.getProductId())
                     .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, ProductErrorCode.STOCK_NOT_FOUND));
