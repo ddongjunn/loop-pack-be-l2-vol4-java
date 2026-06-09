@@ -17,6 +17,7 @@ import com.loopers.support.error.ErrorType;
 import com.loopers.product.domain.ProductErrorCode;
 import com.loopers.user.application.UserReader;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class PlaceOrderService {
@@ -39,6 +41,8 @@ public class PlaceOrderService {
 
     @Transactional
     public OrderResult.Detail createPendingOrder(OrderCommand.Create command) {
+        log.info("주문 생성 시작 userId={} itemCount={} userCouponId={}",
+                command.userId(), command.items().size(), command.userCouponId());
         // 주문자가 존재하지 않으면 재고 차감 전에 NOT_FOUND 로 종료한다.
         userReader.ensureExists(command.userId());
 
@@ -76,6 +80,9 @@ public class PlaceOrderService {
             orderItemRepository.save(item);
         });
 
+        log.info("PENDING 주문 저장 orderId={} orderNumber={} total={} discount={} final={}",
+                saved.getId(), saved.getOrderNumber(), saved.getTotalAmount().value(),
+                saved.getDiscountAmount().value(), saved.getFinalAmount().value());
         return OrderResult.Detail.of(saved, orderItems);
     }
 

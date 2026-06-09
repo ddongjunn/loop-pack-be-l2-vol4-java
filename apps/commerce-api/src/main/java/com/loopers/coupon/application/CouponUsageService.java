@@ -7,11 +7,13 @@ import com.loopers.coupon.domain.UserCouponRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
 
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class CouponUsageService {
@@ -23,7 +25,10 @@ public class CouponUsageService {
         UserCoupon coupon = userCouponRepository.findByIdForUpdate(userCouponId)
                 .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, CouponErrorCode.COUPON_NOT_FOUND));
         coupon.use(userId, orderAmount, ZonedDateTime.now());
-        return coupon.calculateDiscount(orderAmount);
+        Money discount = coupon.calculateDiscount(orderAmount);
+        log.info("쿠폰 사용 userCouponId={} userId={} orderAmount={} discount={}",
+                userCouponId, userId, orderAmount, discount.value());
+        return discount;
     }
 
     @Transactional
@@ -31,5 +36,6 @@ public class CouponUsageService {
         userCouponRepository.findByIdForUpdate(userCouponId)
                 .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, CouponErrorCode.COUPON_NOT_FOUND))
                 .restore();
+        log.info("쿠폰 복원 userCouponId={}", userCouponId);
     }
 }

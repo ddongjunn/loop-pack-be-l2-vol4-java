@@ -11,12 +11,14 @@ import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class OrderCompensationService {
@@ -28,6 +30,7 @@ public class OrderCompensationService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void compensate(Long orderId) {
+        log.info("보상 트랜잭션 시작 orderId={}", orderId);
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.INTERNAL_ERROR, "보상 대상 주문을 찾을 수 없습니다."));
 
@@ -37,11 +40,13 @@ public class OrderCompensationService {
                     .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, ProductErrorCode.STOCK_NOT_FOUND));
             stock.increase(item.getQuantity());
         }
+        log.info("재고 복구 완료 orderId={} itemCount={}", orderId, items.size());
 
         if (order.getUserCouponId() != null) {
             couponUsageService.restore(order.getUserCouponId());
         }
 
         order.markFailed();
+        log.info("보상 완료 orderId={} status=FAILED", orderId);
     }
 }
