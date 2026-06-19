@@ -1,7 +1,6 @@
 package com.loopers.product.application;
 
 import com.loopers.brand.application.BrandReader;
-import com.loopers.like.application.LikeReader;
 import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductDisplayStatus;
 import com.loopers.product.domain.ProductRepository;
@@ -12,6 +11,7 @@ import com.loopers.support.error.CoreException;
 import com.loopers.product.domain.ProductErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -32,9 +32,8 @@ class ProductQueryServiceTest {
     private final ProductRepository productRepository = mock(ProductRepository.class);
     private final ProductStockRepository productStockRepository = mock(ProductStockRepository.class);
     private final BrandReader brandReader = mock(BrandReader.class);
-    private final LikeReader likeReader = mock(LikeReader.class);
     private final ProductQueryService productQueryService =
-            new ProductQueryService(brandReader, likeReader, productRepository, productStockRepository);
+            new ProductQueryService(brandReader, productRepository, productStockRepository);
 
     @Test
     @DisplayName("get 은 판매중 상품을 재고와 함께 Detail 로 매핑하고, 재고가 있으면 displayStatus=ON_SALE 이다")
@@ -43,7 +42,6 @@ class ProductQueryServiceTest {
         when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
         when(productStockRepository.findByProductId(1L)).thenReturn(Optional.of(ProductStock.create(1L, 10)));
         when(brandReader.getName(BRAND_ID)).thenReturn("브랜드");
-        when(likeReader.countActive(1L)).thenReturn(0L);
 
         ProductResult.Detail result = productQueryService.getProduct(1L);
 
@@ -61,7 +59,6 @@ class ProductQueryServiceTest {
         when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
         when(productStockRepository.findByProductId(1L)).thenReturn(Optional.of(ProductStock.create(1L, 0)));
         when(brandReader.getName(BRAND_ID)).thenReturn("브랜드");
-        when(likeReader.countActive(1L)).thenReturn(0L);
 
         ProductResult.Detail result = productQueryService.getProduct(1L);
 
@@ -69,13 +66,13 @@ class ProductQueryServiceTest {
     }
 
     @Test
-    @DisplayName("get 은 브랜드명과 활성 좋아요 수를 함께 조합해 반환한다")
+    @DisplayName("get 은 브랜드명과 비정규화된 좋아요 수(like_count)를 함께 조합해 반환한다")
     void givenProduct_whenGet_thenIncludesBrandNameAndLikeCount() {
         Product product = Product.create(BRAND_ID, "셔츠", "설명", 29_000L, null);
+        ReflectionTestUtils.setField(product, "likeCount", 5L);
         when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
         when(productStockRepository.findByProductId(1L)).thenReturn(Optional.of(ProductStock.create(1L, 10)));
         when(brandReader.getName(BRAND_ID)).thenReturn("나이키");
-        when(likeReader.countActive(1L)).thenReturn(5L);
 
         ProductResult.Detail result = productQueryService.getProduct(1L);
 
@@ -105,7 +102,6 @@ class ProductQueryServiceTest {
         when(productRepository.countOnSale(null)).thenReturn(2L);
         when(productStockRepository.findAllByProductIdIn(anyList())).thenReturn(List.of());
         when(brandReader.getNames(anyList())).thenReturn(Map.of(1L, "브랜드A")); // brandId=2 누락
-        when(likeReader.countActiveByProductIds(anyList())).thenReturn(Map.of());
 
         List<ProductResult.Detail> result = productQueryService.getProducts(query).content();
 
@@ -128,7 +124,6 @@ class ProductQueryServiceTest {
         when(productRepository.countOnSale(BRAND_ID)).thenReturn(42L);
         when(productStockRepository.findAllByProductIdIn(anyList())).thenReturn(List.of());
         when(brandReader.getNames(anyList())).thenReturn(Map.of());
-        when(likeReader.countActiveByProductIds(anyList())).thenReturn(Map.of());
 
         ProductResult.Page result = productQueryService.getProducts(query);
 

@@ -26,7 +26,7 @@ public class ProductResult {
         String thumbnailUrl,
         long likeCount
     ) {
-        public static Detail from(Product product, String brandName, int stockQuantity, long likeCount) {
+        public static Detail from(Product product, String brandName, int stockQuantity) {
             return new Detail(
                 product.getId(),
                 product.getBrandId(),
@@ -36,7 +36,7 @@ public class ProductResult {
                 product.getPrice().value(),
                 product.displayStatus(stockQuantity),
                 product.getThumbnailUrl(),
-                likeCount
+                product.getLikeCount()
             );
         }
     }

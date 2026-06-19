@@ -1,6 +1,5 @@
 package com.loopers.product.infrastructure;
 
-import com.loopers.like.domain.QLike;
 import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductSortOption;
 import com.loopers.product.domain.ProductStatus;
@@ -20,7 +19,6 @@ public class ProductJpaRepositoryCustomImpl implements ProductJpaRepositoryCusto
     @Override
     public List<Product> findAllOnSale(Long brandId, ProductSortOption sort, long offset, int limit) {
         QProduct product = QProduct.product;
-        QLike like = QLike.like;
 
         JPAQuery<Product> query = queryFactory
                 .selectFrom(product)
@@ -34,9 +32,7 @@ public class ProductJpaRepositoryCustomImpl implements ProductJpaRepositoryCusto
                     .orderBy(product.price.value.asc(), product.id.desc())
                     .offset(offset).limit(limit).fetch();
             case LIKES_DESC -> query
-                    .leftJoin(like).on(like.productId.eq(product.id), like.deletedAt.isNull())
-                    .groupBy(product.id)
-                    .orderBy(like.id.count().desc(), product.id.desc())
+                    .orderBy(product.likeCount.desc(), product.id.desc())
                     .offset(offset).limit(limit).fetch();
         };
     }

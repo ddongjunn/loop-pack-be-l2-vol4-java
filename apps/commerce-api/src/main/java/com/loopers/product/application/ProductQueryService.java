@@ -1,7 +1,6 @@
 package com.loopers.product.application;
 
 import com.loopers.brand.application.BrandReader;
-import com.loopers.like.application.LikeReader;
 import com.loopers.product.domain.Product;
 import com.loopers.product.domain.ProductRepository;
 import com.loopers.product.domain.ProductStock;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 public class ProductQueryService {
 
     private final BrandReader brandReader;
-    private final LikeReader likeReader;
     private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
 
@@ -33,8 +31,7 @@ public class ProductQueryService {
         Product product = get(productId);
         int stockQuantity = getStock(productId).getQuantity();
         String brandName = brandReader.getName(product.getBrandId());
-        long likeCount = likeReader.countActive(productId);
-        return ProductResult.Detail.from(product, brandName, stockQuantity, likeCount);
+        return ProductResult.Detail.from(product, brandName, stockQuantity);
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +51,6 @@ public class ProductQueryService {
         Map<Long, Integer> stockByProductId = productStockRepository.findAllByProductIdIn(productIds).stream()
                 .collect(Collectors.toMap(ProductStock::getProductId, ProductStock::getQuantity));
         Map<Long, String> brandNameById = brandReader.getNames(brandIds);
-        Map<Long, Long> likeCountByProductId = likeReader.countActiveByProductIds(productIds);
 
         return products.stream()
                 .map(product -> {
@@ -67,8 +63,7 @@ public class ProductQueryService {
                     return ProductResult.Detail.from(
                             product,
                             brandNameById.get(product.getBrandId()),
-                            stockByProductId.getOrDefault(product.getId(), 0),
-                            likeCountByProductId.getOrDefault(product.getId(), 0L));
+                            stockByProductId.getOrDefault(product.getId(), 0));
                 })
                 .toList();
     }
