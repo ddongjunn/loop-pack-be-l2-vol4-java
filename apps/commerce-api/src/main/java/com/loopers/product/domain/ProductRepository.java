@@ -13,4 +13,6 @@ public interface ProductRepository {
     List<Product> findAllOrderByLatest();
     List<Product> findAllByIdIn(List<Long> ids);
     int softDeleteByBrandId(Long brandId);
+    int incrementLikeCount(Long productId, long delta);
+    int reconcileLikeCounts();
 }
