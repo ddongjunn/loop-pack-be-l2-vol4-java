@@ -9,6 +9,7 @@ import com.loopers.product.domain.ProductRepository;
 import com.loopers.product.domain.ProductStock;
 import com.loopers.product.domain.ProductStockRepository;
 import com.loopers.utils.DatabaseCleanUp;
+import com.loopers.utils.RedisCleanUp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +38,7 @@ class ProductV1ApiE2ETest {
     private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
     private final DatabaseCleanUp databaseCleanUp;
+    private final RedisCleanUp redisCleanUp;
 
     private Long brandId;
 
@@ -46,13 +48,15 @@ class ProductV1ApiE2ETest {
             BrandRepository brandRepository,
             ProductRepository productRepository,
             ProductStockRepository productStockRepository,
-            DatabaseCleanUp databaseCleanUp
+            DatabaseCleanUp databaseCleanUp,
+            RedisCleanUp redisCleanUp
     ) {
         this.testRestTemplate = testRestTemplate;
         this.brandRepository = brandRepository;
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
         this.databaseCleanUp = databaseCleanUp;
+        this.redisCleanUp = redisCleanUp;
     }
 
     @BeforeEach
@@ -63,6 +67,7 @@ class ProductV1ApiE2ETest {
     @AfterEach
     void tearDown() {
         databaseCleanUp.truncateAllTables();
+        redisCleanUp.truncateAll();
     }
 
     private Product saveOnSale(String name, long price, int stock) {

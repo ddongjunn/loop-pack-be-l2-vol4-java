@@ -2,7 +2,7 @@ package com.loopers.product.interfaces.api;
 
 import com.loopers.interfaces.api.ApiResponse;
 import com.loopers.product.application.ProductCommand;
-import com.loopers.product.application.ProductQueryService;
+import com.loopers.product.application.ProductReadCacheService;
 import com.loopers.product.application.ProductResult;
 import com.loopers.product.domain.ProductSortOption;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/products")
 public class ProductV1Controller implements ProductV1ApiSpec {
 
-    private final ProductQueryService productQueryService;
+    private final ProductReadCacheService productReadCacheService;
 
     @GetMapping("/{productId}")
     @Override
     public ApiResponse<ProductV1Response.Detail> get(@PathVariable("productId") Long productId) {
-        return ApiResponse.success(ProductV1Response.Detail.from(productQueryService.getProduct(productId)));
+        return ApiResponse.success(ProductV1Response.Detail.from(productReadCacheService.getProduct(productId)));
     }
 
     @GetMapping
@@ -33,7 +33,7 @@ public class ProductV1Controller implements ProductV1ApiSpec {
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "size", defaultValue = "20") int size
     ) {
-        ProductResult.Page result = productQueryService.getProducts(
+        ProductResult.Page result = productReadCacheService.getProducts(
                 new ProductCommand.PageQuery(brandId, sort, page, size));
         return ApiResponse.success(ProductV1Response.Page.from(result));
     }
