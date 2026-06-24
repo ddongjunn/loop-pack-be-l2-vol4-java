@@ -30,7 +30,7 @@
 
 결제에는 서로 다른 두 개의 상태 기계가 있다. 하나는 우리가 가진 내부 기록이고, 다른 하나는 PG가 가진 외부 거래다.
 
-- **내부 `Payment`** — commerce-api가 소유하는 결제 시도 레코드다. 자체 식별자(surrogate id)를 두고, 여기에 `orderId`, `transactionKey`(nullable), `pgProvider`(nullable), 상태(`PENDING`/`SUCCESS`/`FAILED`)를 담는다.
+- **내부 `Payment`** — commerce-api가 소유하는 결제 시도 레코드다. 자체 식별자(surrogate id)를 두고, 여기에 `orderNumber`(주문 참조 + 멱등 단위), `transactionKey`(nullable), `pgProvider`(nullable), 상태(`PENDING`/`SUCCESS`/`FAILED`)를 담는다.
 - **외부 PG 거래** — PG가 소유한다. `transactionKey`로 식별하고, 상태는 마찬가지로 `PENDING`/`SUCCESS`/`FAILED`다.
 
 두 상태를 잇는 연결고리가 `Payment.transactionKey`다. 이 키가 없으면 내부와 외부를 맞대어 볼 방법이 없다.
@@ -55,8 +55,8 @@
 
 ### 주문당 결제 1건 (멱등)
 
-- 한 주문(`orderId`)에는 활성 상태(`PENDING` 또는 `SUCCESS`)의 Payment가 최대 1건만 존재한다. 별도 멱등키를 두지 않고 orderId 자체를 멱등 단위로 삼는다.
-- 이 규칙은 DB로 강제한다. `payments(order_id)`에 활성 상태로 한정한 유니크를 건다(또는 `order_id` 유니크에 FAILED 재시도 정책을 더한다). 앱에서 `exists`로만 막으면 동시 요청이 몰릴 때 뚫리므로, DB 제약을 1차 방어선으로 둔다.
+- 한 주문(`orderNumber`)에는 활성 상태(`PENDING` 또는 `SUCCESS`)의 Payment가 최대 1건만 존재한다. 별도 멱등키를 두지 않고 `orderNumber` 자체를 멱등 단위로 삼는다. 주문의 surrogate id(Long)가 아니라 `orderNumber`(`yyyyMMdd-NNNNNN`)를 쓰는 이유는, 이 값이 그대로 PG에 보내는 식별자이기 때문이다 — PG가 `orderId`를 6자 이상 문자열로 검증해 짧은 Long id는 못 보낸다.
+- 이 규칙은 DB로 강제한다. `payments(order_number)`에 활성 상태로 한정한 유니크를 건다(또는 `order_number` 유니크에 FAILED 재시도 정책을 더한다). 앱에서 `exists`로만 막으면 동시 요청이 몰릴 때 뚫리므로, DB 제약을 1차 방어선으로 둔다.
 - 실패한 주문은 다시 결제할 수 있어야 한다. 그래서 새 Payment 생성을 허용하고, 유니크 대상도 활성 상태로만 한정한다.
 
 ### 금액

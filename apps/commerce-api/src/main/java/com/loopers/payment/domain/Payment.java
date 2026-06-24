@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment extends BaseEntity {
 
-    @Column(name = "order_id", nullable = false)
-    private Long orderId;
+    @Column(name = "order_number", nullable = false)
+    private String orderNumber;
 
     @Column(name = "transaction_key")
     private String transactionKey;
@@ -45,14 +45,14 @@ public class Payment extends BaseEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
-    private Payment(Long orderId, Money amount) {
-        this.orderId = orderId;
+    private Payment(String orderNumber, Money amount) {
+        this.orderNumber = orderNumber;
         this.amount = amount;
         this.status = PaymentStatus.PENDING;
     }
 
-    public static Payment create(Long orderId, Money amount) {
-        return new Payment(orderId, amount);
+    public static Payment create(String orderNumber, Money amount) {
+        return new Payment(orderNumber, amount);
     }
 
     public void assignTransaction(String transactionKey, PgProvider pgProvider) {

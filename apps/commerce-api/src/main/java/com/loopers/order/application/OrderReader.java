@@ -12,8 +12,8 @@ public class OrderReader {
 
     private final OrderRepository orderRepository;
 
-    public Optional<OrderInfo> findForPayment(Long orderId) {
-        return orderRepository.findById(orderId)
-                .map(order -> new OrderInfo(order.getId(), order.isPayable(), order.getFinalAmount().value()));
+    public Optional<OrderInfo> findForPayment(String orderNumber) {
+        return orderRepository.findByOrderNumber(orderNumber)
+                .map(order -> new OrderInfo(order.getOrderNumber(), order.isPayable(), order.getFinalAmount().value()));
     }
 }
