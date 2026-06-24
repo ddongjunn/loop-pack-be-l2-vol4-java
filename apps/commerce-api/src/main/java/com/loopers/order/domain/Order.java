@@ -101,6 +101,10 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.FAILED;
     }
 
+    public boolean isPayable() {
+        return status == OrderStatus.PENDING;
+    }
+
     private void validate(List<OrderItem> items) {
         if (userId == null) {
             throw new CoreException(ErrorType.BAD_REQUEST, "userId 는 비어있을 수 없습니다.");
