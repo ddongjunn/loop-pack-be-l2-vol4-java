@@ -1,33 +1,43 @@
 package com.loopers.payment.infrastructure;
 
+import com.loopers.payment.domain.PaymentErrorCode;
 import com.loopers.payment.domain.PaymentGateway;
 import com.loopers.payment.domain.PaymentGatewayCommand;
 import com.loopers.payment.domain.PaymentGatewayResult;
 import com.loopers.payment.domain.PaymentStatus;
 import com.loopers.payment.domain.PgProvider;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * 단일 PG(Toss) 게이트웨이. PG 응답엔 provider 가 없으므로 호출한 PG(TOSS)를 직접 찍고,
- * callbackUrl 도 provider 를 아는 여기서 조립한다. 멀티 PG·failover·resilience 조합은 이후 단계에서
- * 이 구현을 RoutingPaymentGateway 로 확장하며 추가한다.
+ * 단일 PG(Toss) 게이트웨이. PG 전송(Feign)·응답 매핑·provider 스탬프·callbackUrl 조립을 담당하고,
+ * 회복탄력성(CB/Retry/RateLimiter) 조합은 {@link PgResilienceExecutor} 에 위임한다.
+ * "안 닿음"(CallNotPermitted/RequestNotPermitted) 처리는 단일 PG 정책상 불가 응답으로 번역한다
+ * — 멀티 PG 가 되면 여기가 failover 분기점이 된다.
  */
 @Slf4j
 @Component
 public class PgPaymentGateway implements PaymentGateway {
 
     private static final PgProvider PROVIDER = PgProvider.TOSS;
+    private static final String INSTANCE = "toss";
     private static final String CALLBACK_PATH = "/api/v1/payments/callback/toss";
 
     private final TossPgClient tossPgClient;
     private final String callbackUrl;
+    private final PgResilienceExecutor resilienceExecutor;
 
     public PgPaymentGateway(TossPgClient tossPgClient,
-                            @Value("${payment.pg.callback-base-url}") String callbackBaseUrl) {
+                            @Value("${payment.pg.callback-base-url}") String callbackBaseUrl,
+                            PgResilienceExecutor resilienceExecutor) {
         this.tossPgClient = tossPgClient;
         this.callbackUrl = callbackBaseUrl + CALLBACK_PATH;
+        this.resilienceExecutor = resilienceExecutor;
     }
 
     @Override
@@ -39,7 +49,15 @@ public class PgPaymentGateway implements PaymentGateway {
                 command.amount(),
                 callbackUrl);
 
-        PgTransactionResponse data = tossPgClient.request(String.valueOf(command.userId()), body).data();
+        PgTransactionResponse data;
+        try {
+            data = resilienceExecutor.call(INSTANCE,
+                    () -> tossPgClient.request(String.valueOf(command.userId()), body).data());
+        } catch (CallNotPermittedException | RequestNotPermitted e) {
+            // PG 에 안 나간 게 확실. 단일 PG 라 불가 처리(멀티 PG 면 여기서 failover).
+            log.warn("PG 호출 차단 provider={} orderNumber={} 사유={}", PROVIDER, command.orderNumber(), e.getClass().getSimpleName());
+            throw new CoreException(ErrorType.INTERNAL_ERROR, PaymentErrorCode.PAYMENT_GATEWAY_UNAVAILABLE);
+        }
 
         log.info("PG 결제 요청 수락 provider={} orderNumber={} transactionKey={} status={}",
                 PROVIDER, command.orderNumber(), data.transactionKey(), data.status());

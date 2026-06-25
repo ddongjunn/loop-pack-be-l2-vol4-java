@@ -42,6 +42,29 @@ payment:
     toss:
       base-url: http://localhost:8082
 
+# PG 호출 회복탄력성. 게이트웨이에서 CircuitBreaker(Retry(RateLimiter(call))) 순서로 수동 조합한다.
+resilience4j:
+  circuitbreaker:
+    instances:
+      toss:
+        sliding-window-size: 20
+        failure-rate-threshold: 50            # 실패율 50% 초과 시 OPEN
+        wait-duration-in-open-state: 10s      # 10초 차단 후 HALF_OPEN
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      toss:
+        max-attempts: 3
+        wait-duration: 200ms
+        retry-exceptions:
+          - feign.FeignException$InternalServerError   # 5xx(전송 불안정)만 재시도, 4xx·모호 실패 제외
+  ratelimiter:
+    instances:
+      toss:
+        limit-for-period: 50
+        limit-refresh-period: 1s
+        timeout-duration: 100ms
+
 ---
 spring:
   config:
