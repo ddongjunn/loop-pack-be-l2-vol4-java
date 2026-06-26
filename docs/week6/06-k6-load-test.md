@@ -50,11 +50,20 @@ k6 run docs/k6/concurrency.js
 PG_START="<pg-simulator 기동 명령>" docs/k6/run-resilience.sh
 ```
 
-## 결과 기록 (실행 후 채움)
+## 실행에서 드러난 사실 (2026-06-26)
 
-| 시나리오 | 일시 | 핵심 지표 | 판정 | 비고 |
-| --- | --- | --- | --- | --- |
-| C1 | | TPS=, p95=, p99= | | |
-| A1 | | accepted=1, conflict=N-1, PG거래수=1 | | |
-| B1/B2 | | 다운 중 p99=, fast-reject 지연=, 복구 시점= | | |
-| B3 | | reconciler 무거래 정리 건수= | | 로그/주문상태 |
+1. **pg-simulator는 동기 POST 에서 ~30~50% 무작위 500 을 던진다**(내장 불안정, 제어 불가). 500 이면 PG 에 거래가 안 생기고 → 우리 결제는 PENDING(키없음) 으로 남아 reconciler 가 정리한다. 그래서 "100% 성공"은 불가능 — 테스트는 이 실패율을 예상된 것으로 다룬다.
+2. **PG 500 의 클라이언트 응답이 갈린다**: CB 가 닫혀 있을 때 PG 500 → `Internal Server Error`(generic 500). CB 가 열린 뒤 → `PAYMENT_GATEWAY_UNAVAILABLE`. (개선 여지: PG 5xx 를 일관된 결제 에러로 번역)
+3. **CB 는 실패율이 높을 때 실제로 OPEN 된다** — 자연 불안정만으로도 50% 임계를 넘기면 열려 fast-reject 한다(아래 B 결과).
+4. **동시 50 결제에서 PG 거래는 1건** — `order_number` 유니크 제약이 이중결제를 막는다.
+
+## 결과 기록
+
+| 시나리오 | 핵심 지표 | 판정 |
+| --- | --- | --- |
+| **C1** baseline | checks 100%, pay p95≈0.7s·p99≈0.8s, 접수율 ~57%(PG 불안정 반영) | ✅ 응답성 OK |
+| **A1** concurrency(50 동시/같은 주문) | accepted=1, conflict=49, **PG 거래=1** | ✅ 이중결제 0 |
+| **B1** resilience(자연 불안정) | CB OPEN → fast-reject(`PAYMENT_GATEWAY_UNAVAILABLE`) 248건, hang 0, p95≈0.7s | ✅ CB 보호·내부 정상 응답 |
+| **B2/B3** 통제 down→up | 미완 — 단일 박스에서 kill+2nd JVM respawn 시 OOM 으로 commerce-api 동반 다운. 안전하게 하려면 PG 재기동을 IDE 가 맡고(2nd JVM spawn 금지) 부하를 낮춰 재시도 | ⏸ 보류 |
+
+> **B2/B3 재시도 시 주의**: `run-resilience.sh` 의 PG 재기동(`PG_START`)이 별도 무거운 JVM 을 띄운다. 단일 개발 머신에선 메모리 압박으로 다른 JVM(commerce-api)이 OOM 될 수 있으니, PG 재기동은 IDE/외부에서 처리하고 래퍼는 kill·타이밍만 담당하도록 분리하는 편이 안전하다.
